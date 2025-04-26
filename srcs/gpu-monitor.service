@@ -1,0 +1,21 @@
+[Unit]
+Description=GPU Temperature Monitor
+After=network.target nvidia-persistenced.service
+Requires=nvidia-persistenced.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/usr/local/lib/gpu-monitor
+Environment=PATH=/usr/local/lib/gpu-monitor/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStartPre=/bin/bash -c 'for i in {1..10}; do nvidia-smi > /dev/null 2>&1 && exit 0; sleep 2; done; exit 1'
+ExecStart=/usr/local/lib/gpu-monitor/.venv/bin/python /usr/local/lib/gpu-monitor/gpu_monitor.py
+Restart=always
+RestartSec=60
+# Add capabilities for shutdown
+CapabilityBoundingSet=CAP_SYS_BOOT
+AmbientCapabilities=CAP_SYS_BOOT
+
+[Install]
+WantedBy=multi-user.target 

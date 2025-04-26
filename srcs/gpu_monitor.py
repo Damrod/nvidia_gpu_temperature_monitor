@@ -12,8 +12,17 @@ import argparse
 from abc import ABC, abstractmethod
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+def load_environment():
+    """Load environment variables from .env file, trying script directory first."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    env_path = os.path.join(script_dir, '.env')
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+    else:
+        load_dotenv()  # Fall back to current directory
+
+# Load environment variables
+load_environment()
 
 # Global configuration
 GOTIFY_SERVER_URL = os.getenv("GOTIFY_SERVER_URL")
