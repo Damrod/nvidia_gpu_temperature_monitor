@@ -7,7 +7,7 @@ VENV_DIR := $(INSTALL_DIR)/.venv
 PIP := $(VENV_DIR)/bin/pip
 SERVICE_NAME := gpu-monitor
 SERVICE_FILE := $(SERVICE_NAME).service
-SERVICE_SRC := srcs/$(SERVICE_FILE)
+SERVICE_SRC := src/$(SERVICE_FILE)
 SYSTEMD_DIR := /etc/systemd/system
 
 # Installation targets
@@ -24,7 +24,7 @@ create-venv:
 
 install-files:
 	@echo "Installing files to $(INSTALL_DIR)..."
-	sudo cp srcs/gpu_monitor.py $(INSTALL_DIR)/
+	sudo cp src/gpu_monitor.py $(INSTALL_DIR)/
 	sudo cp requirements.txt $(INSTALL_DIR)/
 	sudo cp .env $(INSTALL_DIR)/ 2>/dev/null || true
 	# Create a new service file with correct paths

@@ -7,4 +7,13 @@
 *.pyz
 *.pywz
 
+# PyInstaller
+build/
+dist/
+*.spec
+
+# IDE
 .cursor_input
+__pycache__/
+*.py[cod]
+*$py.class
