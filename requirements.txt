@@ -1,0 +1,11 @@
+# System dependencies required:
+# Ubuntu/Debian: sudo apt-get install libsystemd-dev pkg-config
+# Fedora/RHEL: sudo dnf install systemd-devel
+
+requests>=2.31.0
+
+# Windows-specific dependencies
+pywin32>=306; platform_system == "Windows"
+
+# Linux-specific dependencies
+systemd-python>=235; platform_system == "Linux" 
