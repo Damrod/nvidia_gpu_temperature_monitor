@@ -8,39 +8,76 @@ import os
 import sys
 import platform
 import logging
-import argparse
 from abc import ABC, abstractmethod
 from dotenv import load_dotenv
 
-def load_environment():
-    """Load environment variables from .env file, trying script directory first."""
+# Global configuration variables
+GOTIFY_SERVER_URL = None
+GOTIFY_TOKEN = None
+HIGH_TEMPERATURE_THRESHOLD = None
+CRITICAL_TEMPERATURE_THRESHOLD = None
+CHECK_INTERVAL_SECONDS = None
+EMERGENCY_SHUTDOWN_DURATION_SECONDS = None
+
+def load_environment(logger: logging.Logger):
+    """Load environment variables from .env file. The file must exist and contain all required variables."""
+    global GOTIFY_SERVER_URL, GOTIFY_TOKEN, HIGH_TEMPERATURE_THRESHOLD, \
+           CRITICAL_TEMPERATURE_THRESHOLD, CHECK_INTERVAL_SECONDS, \
+           EMERGENCY_SHUTDOWN_DURATION_SECONDS
+
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    env_path = os.path.join(script_dir, '.env')
-    if os.path.exists(env_path):
-        load_dotenv(env_path)
-    else:
-        load_dotenv()  # Fall back to current directory
+    parent_dir = os.path.dirname(script_dir)
+    
+    # Look for exactly .env file in script directory or parent directory
+    env_path = None
+    for dir_path in [script_dir, parent_dir]:
+        test_path = os.path.join(dir_path, '.env')
+        if os.path.isfile(test_path) and os.path.basename(test_path) == '.env':
+            env_path = test_path
+            break
 
-# Load environment variables
-load_environment()
+    if env_path is None:
+        logger.error(f"Required .env file not found in {script_dir} or {parent_dir}")
+        sys.exit(1)
 
-# Global configuration
-GOTIFY_SERVER_URL = os.getenv("GOTIFY_SERVER_URL")
-GOTIFY_TOKEN = os.getenv("GOTIFY_TOKEN")
-HIGH_TEMPERATURE_THRESHOLD = os.getenv("HIGH_TEMPERATURE_THRESHOLD")
-CRITICAL_TEMPERATURE_THRESHOLD = os.getenv("CRITICAL_TEMPERATURE_THRESHOLD")
-CHECK_INTERVAL_SECONDS = os.getenv("CHECK_INTERVAL_SECONDS")
-EMERGENCY_SHUTDOWN_DURATION_SECONDS = os.getenv("EMERGENCY_SHUTDOWN_DURATION_SECONDS")
+    logger.info(f"Loading environment from {env_path}")
+    load_dotenv(env_path, override=True)
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Monitor GPU temperature and send notifications')
-    parser.add_argument(
-        '--emergency-shutdown-duration',
-        type=int,
-        default=EMERGENCY_SHUTDOWN_DURATION_SECONDS,
-        help='Duration in seconds before emergency shutdown when temperature is high (default: 300)'
-    )
-    return parser.parse_args()
+    # Load required configuration
+    required_vars = {
+        "GOTIFY_SERVER_URL": str,
+        "GOTIFY_TOKEN": str,
+        "HIGH_TEMPERATURE_THRESHOLD": int,
+        "CRITICAL_TEMPERATURE_THRESHOLD": int,
+        "CHECK_INTERVAL_SECONDS": int,
+        "EMERGENCY_SHUTDOWN_DURATION_SECONDS": int
+    }
+
+    missing_vars = []
+    for var_name, var_type in required_vars.items():
+        value = os.getenv(var_name)
+        if value is None:
+            missing_vars.append(var_name)
+            continue
+        
+        try:
+            if var_type == int:
+                value = int(value)
+            globals()[var_name] = value
+        except ValueError:
+            logger.error(f"Invalid value for {var_name}: must be {var_type.__name__}")
+            sys.exit(1)
+
+    if missing_vars:
+        logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+        sys.exit(1)
+
+    logger.info("Loaded configuration:")
+    logger.info(f"  High temperature threshold: {HIGH_TEMPERATURE_THRESHOLD}°C")
+    logger.info(f"  Critical temperature threshold: {CRITICAL_TEMPERATURE_THRESHOLD}°C")
+    logger.info(f"  Check interval: {CHECK_INTERVAL_SECONDS} seconds")
+    logger.info(f"  Emergency shutdown duration: {EMERGENCY_SHUTDOWN_DURATION_SECONDS} seconds")
+    logger.info("  Gotify notifications: Enabled")
 
 class SystemLogger(ABC):
     @classmethod
@@ -315,6 +352,7 @@ def setup_logging() -> logging.Logger:
 
 def main():
     logger = setup_logging()
+    load_environment(logger)
     monitor = GPUMonitor(logger)
     monitor.monitor()
 
