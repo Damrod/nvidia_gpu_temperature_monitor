@@ -34,6 +34,8 @@ All Python dependencies are handled automatically during installation. The main 
 
 ## Installation
 
+### Linux Installation
+
 1. Clone the repository:
 ```bash
 git clone <repository-url>
@@ -57,7 +59,30 @@ The installation will:
 - Copy the necessary files to `/usr/local/lib/gpu-monitor`
 - Set up the systemd service
 
-> **Note**: The installation process has been tested on Linux systems. Windows installation paths and service integration are currently untested.
+> **Note**: The python script functionality has been tested, but the installation process has not been tested on Linux systems. Windows script, installation paths and service integration are currently untested.
+
+### Windows Installation
+
+The Windows installer is built using NSIS (Nullsoft Scriptable Install System). To create the installer:
+
+1. Install NSIS from https://nsis.sourceforge.io/Download
+
+2. Build the installer:
+```powershell
+# From the project root
+makensis srcs/installer.nsi
+```
+
+3. Run the generated installer (`gpu-monitor-setup.exe`)
+
+The installer will:
+- Create a virtual environment in the installation directory
+- Install all required Python dependencies
+- Set up the Windows service
+- Create necessary registry entries
+- Add the service to Windows Services
+
+> **Note**: The Windows installer and service integration are currently untested. The installation process is provided as a reference based on standard Windows installation practices.
 
 ## Configuration
 
@@ -109,18 +134,41 @@ Stop-Service -Name "GPU Monitor"
 Get-Service -Name "GPU Monitor"
 ```
 
-## Uninstallation
-
-To remove the service and all installed files:
-```bash
-make uninstall
-```
-
 ## Development
 
-### Running from Source
+### Linux Development
 You can run the monitor directly from the source directory:
 ```bash
+python srcs/gpu_monitor.py
+```
+
+### Windows Development
+To develop and run the monitor on Windows:
+
+1. Create a virtual environment:
+```powershell
+# Create a virtual environment named .venv
+python -m venv .venv
+```
+
+2. Activate the virtual environment:
+```powershell
+# In PowerShell
+.\.venv\Scripts\Activate.ps1
+
+# Or in Command Prompt (cmd.exe)
+.\.venv\Scripts\activate.bat
+```
+
+3. Install dependencies:
+```powershell
+# After activation, install requirements
+pip install -r requirements.txt
+```
+
+4. Run the script:
+```powershell
+# The virtual environment's Python will be used
 python srcs/gpu_monitor.py
 ```
 
