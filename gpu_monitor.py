@@ -16,19 +16,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Global configuration
-GOTIFY_URL = os.getenv("GOTIFY_SERVER_URL")
+GOTIFY_SERVER_URL = os.getenv("GOTIFY_SERVER_URL")
 GOTIFY_TOKEN = os.getenv("GOTIFY_TOKEN")
-HIGH_TEMPERATURE_THRESHOLD = 63  # °C - Will trigger notifications
-CRITICAL_TEMPERATURE_THRESHOLD = 80  # °C - Will trigger emergency shutdown if sustained
-CHECK_INTERVAL = 5  # seconds
-EMERGENCY_SHUTDOWN_DURATION = 300  # 5 minutes in seconds
+HIGH_TEMPERATURE_THRESHOLD = os.getenv("HIGH_TEMPERATURE_THRESHOLD")
+CRITICAL_TEMPERATURE_THRESHOLD = os.getenv("CRITICAL_TEMPERATURE_THRESHOLD")
+CHECK_INTERVAL_SECONDS = os.getenv("CHECK_INTERVAL_SECONDS")
+EMERGENCY_SHUTDOWN_DURATION_SECONDS = os.getenv("EMERGENCY_SHUTDOWN_DURATION_SECONDS")
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Monitor GPU temperature and send notifications')
     parser.add_argument(
         '--emergency-shutdown-duration',
         type=int,
-        default=EMERGENCY_SHUTDOWN_DURATION,
+        default=EMERGENCY_SHUTDOWN_DURATION_SECONDS,
         help='Duration in seconds before emergency shutdown when temperature is high (default: 300)'
     )
     return parser.parse_args()
@@ -215,7 +215,7 @@ class GPUMonitor:
     def send_gotify_notification(self, title: str, message: str, priority: int = 5) -> bool:
         try:
             response = requests.post(
-                f"{GOTIFY_URL}/message",
+                f"{GOTIFY_SERVER_URL}/message",
                 headers={"X-Gotify-Key": GOTIFY_TOKEN},
                 json={
                     "title": title,
@@ -248,14 +248,14 @@ class GPUMonitor:
             if self.critical_temp_start_time is None:
                 self.critical_temp_start_time = current_time
                 self.logger.warning(
-                    f"CRITICAL temperature detected ({temperature}°C). Emergency shutdown will trigger in {EMERGENCY_SHUTDOWN_DURATION} seconds "
+                    f"CRITICAL temperature detected ({temperature}°C). Emergency shutdown will trigger in {EMERGENCY_SHUTDOWN_DURATION_SECONDS} seconds "
                     f"if temperature remains critical."
                 )
-            elif current_time - self.critical_temp_start_time >= EMERGENCY_SHUTDOWN_DURATION:
+            elif current_time - self.critical_temp_start_time >= EMERGENCY_SHUTDOWN_DURATION_SECONDS:
                 self.logger.critical("EMERGENCY: Temperature has been critical for too long. Initiating system shutdown!")
                 self.send_gotify_notification(
                     "EMERGENCY SHUTDOWN",
-                    f"GPU temperature has been critically high ({temperature}°C) for {EMERGENCY_SHUTDOWN_DURATION} seconds. System will shutdown NOW!",
+                    f"GPU temperature has been critically high ({temperature}°C) for {EMERGENCY_SHUTDOWN_DURATION_SECONDS} seconds. System will shutdown NOW!",
                     priority=10
                 )
                 self.shutdown_handler.shutdown()
@@ -288,7 +288,7 @@ class GPUMonitor:
                 
                 self.check_emergency_shutdown(temperature)
             
-            time.sleep(CHECK_INTERVAL)
+            time.sleep(CHECK_INTERVAL_SECONDS)
 
 def setup_logging() -> logging.Logger:
     """Setup and return a configured logger"""
