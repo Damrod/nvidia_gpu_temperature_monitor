@@ -57,6 +57,8 @@ The installation will:
 - Copy the necessary files to `/usr/local/lib/gpu-monitor`
 - Set up the systemd service
 
+> **Note**: The installation process has been tested on Linux systems. Windows installation paths and service integration are currently untested.
+
 ## Configuration
 
 Create a `.env` file with the following variables:
@@ -93,6 +95,8 @@ sudo journalctl -u gpu-monitor -f
 ```
 
 ### Windows
+> **Note**: Windows service integration is currently untested. The following commands are provided as a reference based on standard Windows service management practices.
+
 The service is managed through the Windows Services application or using PowerShell:
 ```powershell
 # Start the service
