@@ -105,33 +105,79 @@ class WindowsSystemLogger(SystemLogger):
         import win32evtlog
         import win32evtlogutil
         import win32con
+        import win32api
+        import win32security
+        import pywintypes
+        
+        # Try to register the event source in the registry, but continue even if it fails
+        try:
+            # Get path to the current Python executable
+            python_exe = sys.executable
+            
+            # Create registry key for event source
+            key = win32api.RegCreateKey(
+                win32con.HKEY_LOCAL_MACHINE,
+                r"SYSTEM\CurrentControlSet\Services\EventLog\Application\GPU Monitor"
+            )
+            
+            # Set required registry values
+            win32api.RegSetValueEx(key, "EventMessageFile", 0, win32con.REG_EXPAND_SZ, python_exe)
+            win32api.RegSetValueEx(key, "TypesSupported", 0, win32con.REG_DWORD, 7)
+            win32api.RegCloseKey(key)
+            logger.info("Successfully registered event source")
+        except pywintypes.error as e:
+            # Log the warning but continue - the event source might already exist
+            logger.warning(f"Could not register event source (this is normal if not running as admin or if already registered): {e}")
         
         class WindowsEventLogHandler(logging.Handler):
+            def __init__(self):
+                super().__init__()
+                self.source_name = "GPU Monitor"
+                # Try to open the event log once to validate the source exists
+                try:
+                    handle = win32evtlog.RegisterEventSource(None, self.source_name)
+                    win32evtlog.DeregisterEventSource(handle)
+                except pywintypes.error as e:
+                    logger.warning(f"Event source validation failed: {e}")
+
             def emit(self, record):
                 try:
                     level_map = {
-                        logging.DEBUG: win32con.EVENTLOG_INFORMATION_TYPE,
-                        logging.INFO: win32con.EVENTLOG_INFORMATION_TYPE,
-                        logging.WARNING: win32con.EVENTLOG_WARNING_TYPE,
-                        logging.ERROR: win32con.EVENTLOG_ERROR_TYPE,
-                        logging.CRITICAL: win32con.EVENTLOG_ERROR_TYPE
+                        logging.DEBUG: win32evtlog.EVENTLOG_INFORMATION_TYPE,
+                        logging.INFO: win32evtlog.EVENTLOG_INFORMATION_TYPE,
+                        logging.WARNING: win32evtlog.EVENTLOG_WARNING_TYPE,
+                        logging.ERROR: win32evtlog.EVENTLOG_ERROR_TYPE,
+                        logging.CRITICAL: win32evtlog.EVENTLOG_ERROR_TYPE
                     }
                     
                     msg = self.format(record)
-                    win32evtlogutil.ReportEvent(
-                        'GPU Monitor',
-                        1,
-                        eventType=level_map.get(record.levelno, win32con.EVENTLOG_INFORMATION_TYPE),
-                        strings=[msg]
-                    )
-                except Exception:
+                    event_type = level_map.get(record.levelno, win32evtlog.EVENTLOG_INFORMATION_TYPE)
+                    
+                    try:
+                        handle = win32evtlog.RegisterEventSource(None, self.source_name)
+                        win32evtlog.ReportEvent(
+                            handle,         # Event log handle
+                            event_type,     # Event Type
+                            0,             # Event Category
+                            0,             # Event ID
+                            None,          # SID
+                            [msg],         # Strings
+                            b""           # Raw data (empty bytes)
+                        )
+                        win32evtlog.DeregisterEventSource(handle)
+                    except pywintypes.error as e:
+                        # Log to console as fallback
+                        print(f"Failed to write to event log: {e}")
+                        print(f"{record.levelname} - {msg}")
+                except Exception as e:
+                    print(f"Error logging to event log: {str(e)}")
                     self.handleError(record)
         
+        # Add both event log and console handlers
         event_handler = WindowsEventLogHandler()
-        event_handler.setFormatter(logging.Formatter('%(message)s'))
+        event_handler.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
         logger.addHandler(event_handler)
         
-        # Also log to console for development
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
         logger.addHandler(console_handler)
