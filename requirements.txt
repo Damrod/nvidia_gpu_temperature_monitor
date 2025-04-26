@@ -3,6 +3,7 @@
 # Fedora/RHEL: sudo dnf install systemd-devel
 
 requests>=2.31.0
+python-dotenv>=1.0.0
 
 # Windows-specific dependencies
 pywin32>=306; platform_system == "Windows"

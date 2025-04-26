@@ -10,6 +10,10 @@ import platform
 import logging
 import argparse
 from abc import ABC, abstractmethod
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Global configuration
 GOTIFY_URL = os.getenv("GOTIFY_SERVER_URL")
