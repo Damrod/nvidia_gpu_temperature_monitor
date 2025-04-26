@@ -63,26 +63,51 @@ The installation will:
 
 ### Windows Installation
 
-The Windows installer is built using NSIS (Nullsoft Scriptable Install System). To create the installer:
+#### Method 1: Using the Installer (Recommended)
 
-1. Install NSIS from https://nsis.sourceforge.io/Download
+1. Download and install WiX Toolset:
+   - Go to https://github.com/wixtoolset/wix3/releases/latest
+   - Download the latest WiX Toolset (e.g., `wix311.exe`)
+   - Run the installer
+   - Add WiX bin directory to your system PATH:
+     1. Open System Properties (Win + R, type `sysdm.cpl`)
+     2. Go to Advanced tab → Environment Variables
+     3. Under System Variables, find and edit "Path"
+     4. Add the WiX bin directory (typically `C:\Program Files (x86)\WiX Toolset v3.11\bin`)
+     5. Click OK to save
 
 2. Build the installer:
 ```powershell
 # From the project root
-makensis srcs/installer.nsi
+cd scripts
+.\build_installer.ps1
 ```
 
-3. Run the generated installer (`gpu-monitor-setup.exe`)
+3. Run the generated installer (`gpu-temp-monitor-setup.msi`)
 
 The installer will:
-- Create a virtual environment in the installation directory
-- Install all required Python dependencies
-- Set up the Windows service
-- Create necessary registry entries
-- Add the service to Windows Services
+- Check for Python and prompt to install if missing
+- Create a virtual environment
+- Install all dependencies
+- Install mock nvidia-smi if needed
+- Set up and start the Windows service
+- Create start menu shortcuts
 
-> **Note**: The Windows installer and service integration are currently untested. The installation process is provided as a reference based on standard Windows installation practices.
+The MSI installer provides several advantages:
+- Standard Windows installation experience
+- Proper upgrade/uninstall handling
+- Group Policy deployment support
+- Silent installation support (`msiexec /i gpu-temp-monitor-setup.msi /quiet`)
+
+#### Method 2: Development Setup
+
+For development or testing, you can use the PowerShell script:
+
+```powershell
+# From the project root
+cd scripts
+.\setup_windows.ps1
+```
 
 ## Configuration
 

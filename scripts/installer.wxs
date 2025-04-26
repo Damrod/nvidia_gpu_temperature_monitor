@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+    
+    <?define ProductName="GPU Temperature Monitor" ?>
+    <?define ProductVersion="1.0.0.0" ?>
+    <?define ProductManufacturer="GPU Monitor" ?>
+    <?define UpgradeCode="12345678-1234-1234-1234-111111111111" ?>
+
+    <Product Id="*" 
+             Name="$(var.ProductName)" 
+             Language="1033" 
+             Version="$(var.ProductVersion)" 
+             Manufacturer="$(var.ProductManufacturer)" 
+             UpgradeCode="$(var.UpgradeCode)">
+        
+        <Package InstallerVersion="200" 
+                 Compressed="yes" 
+                 InstallScope="perMachine" 
+                 Platform="x64"/>
+
+        <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+        <MediaTemplate EmbedCab="yes"/>
+        
+        <!-- UI Configuration -->
+        <UI>
+            <TextStyle Id="Red" FaceName="Tahoma" Size="8" Red="255" Green="0" Blue="0"/>
+            <UIRef Id="WixUI_Mondo"/>
+            <UIRef Id="WixUI_ErrorProgressText"/>
+
+            <!-- Custom ConfigDlg -->
+            <Dialog Id="ConfigDlg" Width="370" Height="270" Title="!(loc.ConfigDlg_Title)">
+                <!-- Header -->
+                <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="!(loc.ConfigDlgTitle)" />
+                <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="!(loc.ConfigDlgDescription)" />
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.ConfigDlgBannerBitmap)" />
+                <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+
+                <!-- Configuration Controls -->
+                <Control Id="IntervalLabel" Type="Text" X="20" Y="60" Width="290" Height="13" Text="!(loc.ConfigDlgIntervalLabel)" />
+                <Control Id="Interval" Type="Edit" X="20" Y="75" Width="50" Height="15" Property="POLLING_INTERVAL" />
+                <Control Id="IntervalError" Type="Text" X="75" Y="75" Width="290" Height="13" Hidden="yes" Text="{\Red}!(loc.ConfigDlgIntervalError)" />
+
+                <Control Id="ThresholdLabel" Type="Text" X="20" Y="100" Width="290" Height="13" Text="!(loc.ConfigDlgThresholdLabel)" />
+                <Control Id="Threshold" Type="Edit" X="20" Y="115" Width="50" Height="15" Property="TEMPERATURE_THRESHOLD" />
+                <Control Id="ThresholdError" Type="Text" X="75" Y="115" Width="290" Height="13" Hidden="yes" Text="{\Red}!(loc.ConfigDlgThresholdError)" />
+
+                <!-- Navigation Buttons -->
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Text="!(loc.WixUINext)" Default="yes">
+                    <Condition Action="disable"><![CDATA[POLLING_INTERVAL < 1 OR POLLING_INTERVAL > 3600 OR TEMPERATURE_THRESHOLD < 0 OR TEMPERATURE_THRESHOLD > 110]]></Condition>
+                    <Condition Action="enable"><![CDATA[POLLING_INTERVAL >= 1 AND POLLING_INTERVAL <= 3600 AND TEMPERATURE_THRESHOLD >= 0 AND TEMPERATURE_THRESHOLD <= 110]]></Condition>
+                </Control>
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+                    <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+                </Control>
+            </Dialog>
+
+            <!-- Insert our dialog after InstallDirDlg -->
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="ConfigDlg" Order="4">WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"</Publish>
+            <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="LicenseAgreementDlg">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Property="_BrowseProperty" Value="[WIXUI_INSTALLDIR]" Order="1">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Event="SpawnDialog" Value="BrowseDlg" Order="2">1</Publish>
+            <Publish Dialog="ConfigDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg">1</Publish>
+            <Publish Dialog="ConfigDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg">
+                <![CDATA[POLLING_INTERVAL >= 1 AND POLLING_INTERVAL <= 3600 AND TEMPERATURE_THRESHOLD >= 0 AND TEMPERATURE_THRESHOLD <= 110]]>
+            </Publish>
+
+            <!-- Validation Events -->
+            <Publish Dialog="ConfigDlg" Control="Next" Event="Show" Value="IntervalError">
+                <![CDATA[POLLING_INTERVAL < 1 OR POLLING_INTERVAL > 3600]]>
+            </Publish>
+            <Publish Dialog="ConfigDlg" Control="Next" Event="Hide" Value="IntervalError">
+                <![CDATA[POLLING_INTERVAL >= 1 AND POLLING_INTERVAL <= 3600]]>
+            </Publish>
+            <Publish Dialog="ConfigDlg" Control="Next" Event="Show" Value="ThresholdError">
+                <![CDATA[TEMPERATURE_THRESHOLD < 0 OR TEMPERATURE_THRESHOLD > 110]]>
+            </Publish>
+            <Publish Dialog="ConfigDlg" Control="Next" Event="Hide" Value="ThresholdError">
+                <![CDATA[TEMPERATURE_THRESHOLD >= 0 AND TEMPERATURE_THRESHOLD <= 110]]>
+            </Publish>
+        </UI>
+
+        <!-- Properties for configuration -->
+        <Property Id="GOTIFY_SERVER" Value="https://your-gotify-server" />
+        <Property Id="GOTIFY_TOKEN" Value="your-gotify-token" />
+        <Property Id="HIGH_TEMP" Value="80" />
+        <Property Id="CRITICAL_TEMP" Value="90" />
+        <Property Id="CHECK_INTERVAL" Value="60" />
+        <Property Id="SHUTDOWN_DELAY" Value="300" />
+        <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+        <Property Id="BannerBitmap" Value="WixUI_Bmp_Banner" />
+        
+        <Feature Id="ProductFeature" Title="GPU Temperature Monitor" Level="1">
+            <ComponentGroupRef Id="ProductComponents" />
+            <ComponentGroupRef Id="ProgramMenuDir"/>
+        </Feature>
+
+        <!-- Check for Python installation -->
+        <Property Id="PYTHON313_REGKEY">
+            <RegistrySearch Id="Python313RegSearch"
+                          Root="HKLM"
+                          Key="SOFTWARE\Python\PythonCore\3.13\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
+        </Property>
+        <Property Id="PYTHON312_REGKEY">
+            <RegistrySearch Id="Python312RegSearch"
+                          Root="HKLM"
+                          Key="SOFTWARE\Python\PythonCore\3.12\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
+        </Property>
+        <Property Id="PYTHON311_REGKEY">
+            <RegistrySearch Id="Python311RegSearch"
+                          Root="HKLM"
+                          Key="SOFTWARE\Python\PythonCore\3.11\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
+        </Property>
+        <Property Id="PYTHON310_REGKEY">
+            <RegistrySearch Id="Python310RegSearch"
+                          Root="HKLM"
+                          Key="SOFTWARE\Python\PythonCore\3.10\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
+        </Property>
+        <Property Id="PYTHON39_REGKEY">
+            <RegistrySearch Id="Python39RegSearch"
+                          Root="HKLM"
+                          Key="SOFTWARE\Python\PythonCore\3.9\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
+        </Property>
+        <Property Id="PYTHON38_REGKEY">
+            <RegistrySearch Id="Python38RegSearch"
+                          Root="HKLM"
+                          Key="SOFTWARE\Python\PythonCore\3.8\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
+        </Property>
+
+        <!-- Set PYTHON_REGKEY to the first found version -->
+        <SetProperty Id="PYTHON_REGKEY" Value="[PYTHON313_REGKEY]" After="AppSearch">
+            PYTHON313_REGKEY OR PYTHON312_REGKEY OR PYTHON311_REGKEY OR PYTHON310_REGKEY OR PYTHON39_REGKEY OR PYTHON38_REGKEY
+        </SetProperty>
+
+        <Condition Message="This application requires Python 3.8 or higher. Please install Python 3.8 or higher and try again.">
+            <![CDATA[Installed OR PYTHON_REGKEY]]>
+        </Condition>
+
+        <!-- Directory Structure -->
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFiles64Folder">
+                <Directory Id="INSTALLFOLDER" Name="GPU Temperature Monitor">
+                    <Directory Id="VENVFOLDER" Name=".venv"/>
+                    <Directory Id="SRCFOLDER" Name="src"/>
+                    <Directory Id="BinDir" Name="bin" />
+                    <Directory Id="ServiceDir" Name="service" />
+                    <Directory Id="ConfigFolder" Name="config" />
+                </Directory>
+            </Directory>
+            <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="GPU Temperature Monitor"/>
+            </Directory>
+            <Directory Id="SystemFolder"/>
+        </Directory>
+
+        <!-- Components -->
+        <ComponentGroup Id="ProductComponents">
+            <!-- Main Component -->
+            <Component Id="MainExecutable" Directory="INSTALLFOLDER" Win64="yes" Guid="*">
+                <File Id="MainPyFile" 
+                      Name="gpu_monitor.py" 
+                      Source="..\src\gpu_monitor.py" 
+                      KeyPath="yes"/>
+            </Component>
+
+            <Component Id="Requirements" Directory="INSTALLFOLDER" Win64="yes" Guid="*">
+                <File Id="RequirementsFile" 
+                      Name="requirements.txt" 
+                      Source="..\requirements.txt"
+                      KeyPath="yes"/>
+            </Component>
+
+            <!-- Configuration -->
+            <Component Id="ConfigurationFile" Directory="ConfigFolder" Win64="yes" Guid="*">
+                <File Id="ConfigFile"
+                      Name="config.ini"
+                      Source="config.ini"
+                      KeyPath="yes"/>
+                
+                <!-- Remove config folder on uninstall -->
+                <RemoveFile Id="RemoveConfigFile" Name="config.ini" On="uninstall" />
+                <RemoveFolder Id="RemoveConfigFolder" On="uninstall" />
+            </Component>
+
+            <Component Id="ConfigurationRegistry" Directory="ConfigFolder" Win64="yes" Guid="*">
+                <!-- Registry entries for service to locate config -->
+                <RegistryKey Root="HKLM"
+                           Key="SOFTWARE\GPU Temperature Monitor">
+                    <RegistryValue Type="string" 
+                                 Name="ConfigPath" 
+                                 Value="[ConfigFolder]config.ini"
+                                 KeyPath="yes"/>
+                </RegistryKey>
+            </Component>
+
+            <!-- Service Installation -->
+            <Component Id="ServiceInstallation" Directory="INSTALLFOLDER" Win64="yes" Guid="*">
+                <RegistryValue Root="HKLM"
+                             Key="SOFTWARE\GPU Temperature Monitor"
+                             Name="Service_Installed"
+                             Type="integer"
+                             Value="1"
+                             KeyPath="yes"/>
+                <ServiceInstall Id="ServiceInstaller"
+                              Type="ownProcess"
+                              Name="GPUTempMonitor"
+                              DisplayName="GPU Temperature Monitor"
+                              Description="Monitors GPU temperature and prevents overheating"
+                              Start="auto"
+                              Account="LocalSystem"
+                              ErrorControl="normal"
+                              Vital="yes">
+                    <util:ServiceConfig 
+                        FirstFailureActionType="restart"
+                        SecondFailureActionType="restart"
+                        ThirdFailureActionType="restart"
+                        RestartServiceDelayInSeconds="60"/>
+                </ServiceInstall>
+                <ServiceControl Id="StartService" 
+                              Start="install" 
+                              Stop="both" 
+                              Remove="uninstall" 
+                              Name="GPUTempMonitor" 
+                              Wait="yes" />
+            </Component>
+
+            <!-- Mock nvidia-smi installation -->
+            <Component Id="MockNvidiaSmi" Directory="SystemFolder" Win64="no" Guid="*">
+                <File Id="NvidiaSmi" 
+                      Name="nvidia-smi.exe" 
+                      Source="..\dist\nvidia-smi.exe" 
+                      KeyPath="yes"/>
+            </Component>
+
+            <!-- Service Files -->
+            <Component Id="ServicePyFile" Directory="ServiceDir" Win64="yes" Guid="*">
+                <File Id="GpuMonitor" 
+                      Name="gpu_monitor.py" 
+                      Source="..\src\gpu_monitor.py" 
+                      KeyPath="yes"/>
+            </Component>
+
+            <Component Id="ServiceRequirements" Directory="ServiceDir" Win64="yes" Guid="*">
+                <File Id="ServiceReq" 
+                      Name="requirements.txt" 
+                      Source="..\requirements.txt"
+                      KeyPath="yes"/>
+            </Component>
+        </ComponentGroup>
+
+        <!-- Start Menu Shortcuts -->
+        <ComponentGroup Id="ProgramMenuDir" Directory="ApplicationProgramsFolder">
+            <Component Id="ApplicationShortcuts" Win64="yes" Guid="*">
+                <Shortcut Id="UninstallProduct"
+                          Name="Uninstall GPU Monitor"
+                          Description="Uninstalls GPU Temperature Monitor"
+                          Target="[System64Folder]msiexec.exe"
+                          Arguments="/x [ProductCode]"/>
+                <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
+                <RegistryValue Root="HKCU"
+                             Key="Software\[Manufacturer]\[ProductName]"
+                             Name="installed"
+                             Type="integer"
+                             Value="1"
+                             KeyPath="yes"/>
+            </Component>
+        </ComponentGroup>
+
+        <!-- Custom Actions -->
+        <CustomAction Id="CreateVenv" 
+                     Directory="INSTALLFOLDER"
+                     ExeCommand="[PYTHON_REGKEY] -m venv .venv"
+                     Return="check"/>
+        <CustomAction Id="InstallDeps" 
+                     Directory="INSTALLFOLDER"
+                     ExeCommand="[VENVFOLDER]Scripts\pip.exe install -r requirements.txt"
+                     Return="check"/>
+
+        <!-- Custom Actions to write configuration -->
+        <Binary Id="ConfigWriter" SourceFile="write_config.vbs" />
+        <CustomAction Id="WriteConfig" 
+                     BinaryKey="ConfigWriter" 
+                     VBScriptCall="WriteConfiguration"
+                     Execute="deferred"
+                     Impersonate="no">
+            <![CDATA[
+            CONFIG_PATH=[ConfigFolder]config.ini
+            GOTIFY_SERVER=[GOTIFY_SERVER]
+            GOTIFY_TOKEN=[GOTIFY_TOKEN]
+            HIGH_TEMP=[HIGH_TEMP]
+            CRITICAL_TEMP=[CRITICAL_TEMP]
+            CHECK_INTERVAL=[CHECK_INTERVAL]
+            SHUTDOWN_DELAY=[SHUTDOWN_DELAY]
+            ]]>
+        </CustomAction>
+
+        <!-- Install Sequence -->
+        <InstallExecuteSequence>
+            <Custom Action="WriteConfig" After="InstallFiles">NOT Installed</Custom>
+            <Custom Action="CreateVenv" After="WriteConfig">NOT Installed</Custom>
+            <Custom Action="InstallDeps" After="CreateVenv">NOT Installed</Custom>
+        </InstallExecuteSequence>
+
+    </Product>
+</Wix> 

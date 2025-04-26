@@ -1,3 +1,26 @@
+# GPU Temperature Monitor - Windows Setup Script
+#
+# Purpose: Sets up the development environment and/or performs direct installation.
+# This script is used for:
+# - Setting up a development environment
+# - Direct installation without using the MSI installer
+# - Testing and debugging the application
+#
+# What this script does:
+# 1. Configures development tools (WiX Toolset, PyInstaller)
+# 2. Installs mock nvidia-smi for systems without NVIDIA GPUs
+# 3. Creates and configures the Windows service
+# 4. Sets up the runtime environment
+#
+# Usage:
+# 1. Run PowerShell as Administrator
+# 2. Run: .\scripts\setup_windows.ps1
+#
+# Requirements:
+# - Administrative privileges
+# - Python installed and in PATH
+# - WiX Toolset v3.14 installed (will be added to PATH if needed)
+
 # Requires -RunAsAdministrator
 
 # Configuration
@@ -6,6 +29,7 @@ $ServiceName = "GPUTempMonitor"
 $InstallDir = "C:\Program Files\GPU Temperature Monitor"
 $VenvDir = Join-Path $InstallDir ".venv"
 $MockNvidiaSmiPath = "C:\Windows\System32\nvidia-smi.exe"
+$WixPath = "C:\Program Files (x86)\WiX Toolset v3.14\bin"
 
 function Test-NvidiaSmi {
     try {
@@ -102,6 +126,51 @@ function Install-Service {
     Write-Host "Service installed successfully"
 }
 
+function Setup-WixTools {
+    Write-Host "Configuring WiX Toolset PATH..."
+
+    # Check if WiX directory exists
+    if (-not (Test-Path $WixPath)) {
+        Write-Warning "WiX installation not found at $WixPath"
+        Write-Host "Please install WiX Toolset v3.14 before running this script."
+        return $false
+    }
+
+    # Get the current system PATH
+    $currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+
+    # Check if WiX is already in PATH
+    if ($currentPath -like "*$WixPath*") {
+        Write-Host "WiX is already in the system PATH."
+        return $true
+    }
+
+    # Add WiX to PATH
+    $newPath = $currentPath + ";" + $WixPath
+    [Environment]::SetEnvironmentVariable("Path", $newPath, "Machine")
+
+    # Update current session's PATH
+    $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine")
+
+    # Verify the addition
+    $verifyPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    if ($verifyPath -like "*$WixPath*") {
+        Write-Host "WiX has been successfully added to the system PATH."
+        
+        # Test if WiX tools are accessible
+        $candleTest = Get-Command candle.exe -ErrorAction SilentlyContinue
+        if ($candleTest) {
+            Write-Host "Successfully verified WiX tools are accessible!"
+        } else {
+            Write-Warning "WiX was added to PATH but tools are not immediately accessible. You may need to restart your terminal."
+        }
+        return $true
+    } else {
+        Write-Error "Failed to add WiX to the system PATH."
+        return $false
+    }
+}
+
 # Main installation process
 try {
     # Check if running as administrator
@@ -120,6 +189,11 @@ try {
     if (-not $?) {
         Write-Host "Installing PyInstaller..."
         pip install pyinstaller
+    }
+    
+    # Setup WiX tools
+    if (-not (Setup-WixTools)) {
+        Write-Warning "WiX tools setup failed. Installation will continue but installer creation may not work."
     }
     
     # Check and install mock nvidia-smi if needed
