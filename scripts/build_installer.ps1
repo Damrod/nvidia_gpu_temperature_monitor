@@ -60,27 +60,53 @@ function Build-Installer {
     $WixObj = Join-Path $BuildDir "installer.wixobj"
     $MsiFile = Join-Path $DistDir "gpu-temp-monitor-setup.msi"
     
-    # Build installer
-    candle.exe -ext WixUtilExtension `
-              -arch x64 `
-              installer.wxs `
-              -out $WixObj
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to compile WiX source"
-    }
+    # Change to scripts directory for WiX tools
+    Push-Location $PSScriptRoot
     
-    light.exe -ext WixUtilExtension `
-             -ext WixUIExtension `
-             -cultures:en-us `
-             -loc installer.wxl `
-             -out $MsiFile `
-             $WixObj
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to link WiX objects"
+    try {
+        # Build installer with additional validation
+        candle.exe -ext WixUtilExtension `
+                  -ext WixUIExtension `
+                  -arch x64 `
+                  -v `
+                  -trace `
+                  installer.wxs `
+                  -out $WixObj
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to compile WiX source"
+        }
+        
+        light.exe -ext WixUtilExtension `
+                 -ext WixUIExtension `
+                 -cultures:en-us `
+                 -loc installer.wxl `
+                 -out $MsiFile `
+                 -v `
+                 -sval `
+                 -dcl:high `
+                 -notidy `
+                 $WixObj
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to link WiX objects"
+        }
+        
+        # Verify the MSI after creation
+        Write-Host "Verifying MSI package..."
+        $msival = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin\x86\msival.exe"
+        if (Test-Path $msival) {
+            & $msival $MsiFile
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "MSI validation found issues"
+            }
+        }
+        
+        # Clean up intermediate files
+        Remove-Item $WixObj -Force
     }
-    
-    # Clean up intermediate files
-    Remove-Item $WixObj -Force
+    finally {
+        # Restore original directory
+        Pop-Location
+    }
 }
 
 try {

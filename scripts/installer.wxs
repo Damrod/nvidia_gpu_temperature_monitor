@@ -80,6 +80,31 @@
             <Publish Dialog="ConfigDlg" Control="Next" Event="Hide" Value="ThresholdError">
                 <![CDATA[TEMPERATURE_THRESHOLD >= 0 AND TEMPERATURE_THRESHOLD <= 110]]>
             </Publish>
+
+            <!-- Debug Dialog -->
+            <Dialog Id="PythonDebugDlg" Width="370" Height="270" Title="Python Debug Info">
+                <Control Id="OK" Type="PushButton" X="304" Y="243" Width="56" Height="17" Default="yes" Cancel="yes" Text="OK">
+                    <Publish Event="EndDialog" Value="Return">1</Publish>
+                </Control>
+                <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="Python Installation Debug Info" />
+                <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="The following Python installations were found:" />
+                <Control Id="Store1Label" Type="Text" X="20" Y="50" Width="100" Height="13" Text="Store Path 1:" />
+                <Control Id="Store1Value" Type="Text" X="120" Y="50" Width="230" Height="13" Text="[PYTHONSTORE_PATH]" />
+                <Control Id="Store2Label" Type="Text" X="20" Y="70" Width="100" Height="13" Text="Store Path 2:" />
+                <Control Id="Store2Value" Type="Text" X="120" Y="70" Width="230" Height="13" Text="[PYTHONSTORE_PATH2]" />
+                <Control Id="Python313Label" Type="Text" X="20" Y="90" Width="100" Height="13" Text="Python 3.13:" />
+                <Control Id="Python313Value" Type="Text" X="120" Y="90" Width="230" Height="13" Text="[PYTHON313_REGKEY]" />
+                <Control Id="Python312Label" Type="Text" X="20" Y="110" Width="100" Height="13" Text="Python 3.12:" />
+                <Control Id="Python312Value" Type="Text" X="120" Y="110" Width="230" Height="13" Text="[PYTHON312_REGKEY]" />
+                <Control Id="Python311Label" Type="Text" X="20" Y="130" Width="100" Height="13" Text="Python 3.11:" />
+                <Control Id="Python311Value" Type="Text" X="120" Y="130" Width="230" Height="13" Text="[PYTHON311_REGKEY]" />
+                <Control Id="FinalLabel" Type="Text" X="20" Y="170" Width="100" Height="13" Text="Selected Python:" />
+                <Control Id="FinalValue" Type="Text" X="120" Y="170" Width="230" Height="13" Text="[PYTHON_REGKEY]" />
+            </Dialog>
+
+            <!-- Show debug dialog after welcome -->
+            <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="PythonDebugDlg" Order="2">1</Publish>
+            <Publish Dialog="PythonDebugDlg" Control="OK" Event="NewDialog" Value="LicenseAgreementDlg" Order="2">1</Publish>
         </UI>
 
         <!-- Properties for configuration -->
@@ -91,6 +116,7 @@
         <Property Id="SHUTDOWN_DELAY" Value="300" />
         <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
         <Property Id="BannerBitmap" Value="WixUI_Bmp_Banner" />
+        <Property Id="PYTHON_REGKEY" Secure="yes" />
         
         <Feature Id="ProductFeature" Title="GPU Temperature Monitor" Level="1">
             <ComponentGroupRef Id="ProductComponents" />
@@ -98,9 +124,33 @@
         </Feature>
 
         <!-- Check for Python installation -->
+        <!-- Windows Store Python -->
+        <Property Id="PYTHONSTORE_PATH">
+            <DirectorySearch Id="PythonStoreSearch" Path="[LocalAppDataFolder]Microsoft\WindowsApps" AssignToProperty="yes">
+                <FileSearch Id="PythonExeSearch1" Name="python.exe"/>
+            </DirectorySearch>
+        </Property>
+        <Property Id="PYTHONSTORE_PATH2">
+            <DirectorySearch Id="PythonStoreSearch2" Path="[LocalAppDataFolder]Microsoft\WindowsApps" AssignToProperty="yes">
+                <FileSearch Id="PythonExeSearch2" Name="python.exe"/>
+            </DirectorySearch>
+        </Property>
+        <Property Id="PYTHONSTORE_PATH3">
+            <DirectorySearch Id="PythonStoreSearch3" Path="[LocalAppDataFolder]Programs\Python" Depth="2" AssignToProperty="yes">
+                <FileSearch Id="PythonExeSearch3" Name="python.exe"/>
+            </DirectorySearch>
+        </Property>
+
+        <!-- Traditional Python installations -->
         <Property Id="PYTHON313_REGKEY">
             <RegistrySearch Id="Python313RegSearch"
                           Root="HKLM"
+                          Key="SOFTWARE\Python\PythonCore\3.13\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
+            <RegistrySearch Id="Python313RegSearchUser"
+                          Root="HKCU"
                           Key="SOFTWARE\Python\PythonCore\3.13\InstallPath"
                           Name="ExecutablePath"
                           Type="raw"
@@ -113,10 +163,22 @@
                           Name="ExecutablePath"
                           Type="raw"
                           Win64="yes"/>
+            <RegistrySearch Id="Python312RegSearchUser"
+                          Root="HKCU"
+                          Key="SOFTWARE\Python\PythonCore\3.12\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
         </Property>
         <Property Id="PYTHON311_REGKEY">
             <RegistrySearch Id="Python311RegSearch"
                           Root="HKLM"
+                          Key="SOFTWARE\Python\PythonCore\3.11\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
+            <RegistrySearch Id="Python311RegSearchUser"
+                          Root="HKCU"
                           Key="SOFTWARE\Python\PythonCore\3.11\InstallPath"
                           Name="ExecutablePath"
                           Type="raw"
@@ -129,10 +191,22 @@
                           Name="ExecutablePath"
                           Type="raw"
                           Win64="yes"/>
+            <RegistrySearch Id="Python310RegSearchUser"
+                          Root="HKCU"
+                          Key="SOFTWARE\Python\PythonCore\3.10\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
         </Property>
         <Property Id="PYTHON39_REGKEY">
             <RegistrySearch Id="Python39RegSearch"
                           Root="HKLM"
+                          Key="SOFTWARE\Python\PythonCore\3.9\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
+            <RegistrySearch Id="Python39RegSearchUser"
+                          Root="HKCU"
                           Key="SOFTWARE\Python\PythonCore\3.9\InstallPath"
                           Name="ExecutablePath"
                           Type="raw"
@@ -145,15 +219,30 @@
                           Name="ExecutablePath"
                           Type="raw"
                           Win64="yes"/>
+            <RegistrySearch Id="Python38RegSearchUser"
+                          Root="HKCU"
+                          Key="SOFTWARE\Python\PythonCore\3.8\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
         </Property>
 
         <!-- Set PYTHON_REGKEY to the first found version -->
-        <SetProperty Id="PYTHON_REGKEY" Value="[PYTHON313_REGKEY]" After="AppSearch">
-            PYTHON313_REGKEY OR PYTHON312_REGKEY OR PYTHON311_REGKEY OR PYTHON310_REGKEY OR PYTHON39_REGKEY OR PYTHON38_REGKEY
+        <SetProperty Id="SetPythonRegKeyStore" After="AppSearch" Value="[LocalAppDataFolder]Microsoft\WindowsApps\python.exe">
+            PYTHONSTORE_PATH
+        </SetProperty>
+        <SetProperty Id="SetPythonRegKey313" After="AppSearch" Value="[PYTHON313_REGKEY]">
+            NOT PYTHONSTORE_PATH AND PYTHON313_REGKEY
+        </SetProperty>
+        <SetProperty Id="SetPythonRegKey312" After="AppSearch" Value="[PYTHON312_REGKEY]">
+            NOT PYTHONSTORE_PATH AND NOT PYTHON313_REGKEY AND PYTHON312_REGKEY
+        </SetProperty>
+        <SetProperty Id="SetPythonRegKey311" After="AppSearch" Value="[PYTHON311_REGKEY]">
+            NOT PYTHONSTORE_PATH AND NOT PYTHON313_REGKEY AND NOT PYTHON312_REGKEY AND PYTHON311_REGKEY
         </SetProperty>
 
         <Condition Message="This application requires Python 3.8 or higher. Please install Python 3.8 or higher and try again.">
-            <![CDATA[Installed OR PYTHON_REGKEY]]>
+            <![CDATA[Installed OR PYTHONSTORE_PATH OR PYTHONSTORE_PATH2 OR PYTHONSTORE_PATH3 OR PYTHON313_REGKEY OR PYTHON312_REGKEY OR PYTHON311_REGKEY OR PYTHON310_REGKEY OR PYTHON39_REGKEY OR PYTHON38_REGKEY]]>
         </Condition>
 
         <!-- Directory Structure -->
@@ -194,7 +283,7 @@
             <Component Id="ConfigurationFile" Directory="ConfigFolder" Win64="yes" Guid="*">
                 <File Id="ConfigFile"
                       Name="config.ini"
-                      Source="config.ini"
+                      Source="$(sys.CURRENTDIR)\config.ini"
                       KeyPath="yes"/>
                 
                 <!-- Remove config folder on uninstall -->
@@ -289,12 +378,39 @@
         <!-- Custom Actions -->
         <CustomAction Id="CreateVenv" 
                      Directory="INSTALLFOLDER"
-                     ExeCommand="[PYTHON_REGKEY] -m venv .venv"
+                     ExeCommand="&quot;[PYTHON_REGKEY]&quot; -m venv .venv"
+                     Execute="deferred"
+                     Impersonate="no"
                      Return="check"/>
         <CustomAction Id="InstallDeps" 
                      Directory="INSTALLFOLDER"
-                     ExeCommand="[VENVFOLDER]Scripts\pip.exe install -r requirements.txt"
+                     ExeCommand="[VENVFOLDER]Scripts\python.exe -m pip install -r requirements.txt"
+                     Execute="deferred"
+                     Impersonate="no"
                      Return="check"/>
+
+        <!-- Debug logging custom actions -->
+        <CustomAction Id="LogPythonPaths" 
+                     Script="vbscript">
+            <![CDATA[
+                Session.Log "DEBUG: PYTHONSTORE_PATH = " & Session.Property("PYTHONSTORE_PATH")
+                Session.Log "DEBUG: PYTHONSTORE_PATH2 = " & Session.Property("PYTHONSTORE_PATH2")
+                Session.Log "DEBUG: PYTHONSTORE_PATH3 = " & Session.Property("PYTHONSTORE_PATH3")
+                Session.Log "DEBUG: PYTHON313_REGKEY = " & Session.Property("PYTHON313_REGKEY")
+                Session.Log "DEBUG: PYTHON312_REGKEY = " & Session.Property("PYTHON312_REGKEY")
+                Session.Log "DEBUG: PYTHON311_REGKEY = " & Session.Property("PYTHON311_REGKEY")
+                Session.Log "DEBUG: Selected PYTHON_REGKEY = " & Session.Property("PYTHON_REGKEY")
+            ]]>
+        </CustomAction>
+
+        <!-- Debug logging for venv creation -->
+        <CustomAction Id="LogVenvCreation"
+                     Script="vbscript">
+            <![CDATA[
+                Session.Log "DEBUG: Creating virtual environment at: [INSTALLFOLDER].venv"
+                Session.Log "DEBUG: Using Python from: " & Session.Property("PYTHON_REGKEY")
+            ]]>
+        </CustomAction>
 
         <!-- Custom Actions to write configuration -->
         <Binary Id="ConfigWriter" SourceFile="write_config.vbs" />
@@ -316,6 +432,8 @@
 
         <!-- Install Sequence -->
         <InstallExecuteSequence>
+            <Custom Action="LogPythonPaths" Before="WriteConfig">NOT Installed</Custom>
+            <Custom Action="LogVenvCreation" Before="CreateVenv">NOT Installed</Custom>
             <Custom Action="WriteConfig" After="InstallFiles">NOT Installed</Custom>
             <Custom Action="CreateVenv" After="WriteConfig">NOT Installed</Custom>
             <Custom Action="InstallDeps" After="CreateVenv">NOT Installed</Custom>
