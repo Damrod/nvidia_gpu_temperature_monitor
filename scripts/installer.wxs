@@ -362,7 +362,7 @@
                               Name="GPUTempMonitor"
                               DisplayName="GPU Temperature Monitor"
                               Description="Monitors GPU temperature and prevents overheating"
-                              Start="auto"
+                              Start="demand"
                               Account="LocalSystem"
                               ErrorControl="normal"
                               Vital="yes">
@@ -423,7 +423,7 @@
 
         <CustomAction Id="SetConfigData" 
                      Property="WriteConfig" 
-                     Value="[ConfigFolder]config.ini [GOTIFY_TOKEN] [GOTIFY_SERVER_URL] [HIGH_TEMPERATURE_THRESHOLD] [CRITICAL_TEMPERATURE_THRESHOLD] [CHECK_INTERVAL_SECONDS] [EMERGENCY_SHUTDOWN_DURATION_SECONDS]" 
+                     Value="[ConfigFolder]config.ini" 
                      Execute="immediate"/>
 
         <CustomAction Id="LogPythonPaths"

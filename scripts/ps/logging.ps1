@@ -34,5 +34,5 @@ catch {
 }
 finally {
     Write-Host "`nKeeping window open for 15 seconds..." -ForegroundColor Cyan
-    Start-Sleep -Seconds 15
+    Start-Sleep -Seconds 0
 } 
