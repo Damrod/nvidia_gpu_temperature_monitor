@@ -418,7 +418,7 @@
 
         <CustomAction Id="SetInstallDepsData" 
                      Property="InstallDeps" 
-                     Value="[VENVFOLDER]venv\Scripts\python.exe [INSTALLFOLDER]requirements.txt" 
+                     Value="&quot;[VENVFOLDER]venv\Scripts\python.exe&quot; &quot;[INSTALLFOLDER]requirements.txt&quot;"
                      Execute="immediate"/>
 
         <CustomAction Id="SetConfigData" 
@@ -463,7 +463,7 @@
 
         <CustomAction Id="InstallDeps" 
                      Property="POWERSHELL_PATH"
-                     ExeCommand='-NoProfile -ExecutionPolicy Bypass -File "[INSTALLFOLDER]ps\install_requirements.ps1" "[InstallDeps]"'
+                     ExeCommand="-NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]ps\install_requirements.ps1&quot; [InstallDeps]"
                      Execute="deferred"
                      Impersonate="no"
                      Return="check"/>
