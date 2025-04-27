@@ -8,8 +8,10 @@ import os
 import sys
 import platform
 import logging
+import signal
 from abc import ABC, abstractmethod
 from dotenv import load_dotenv
+from daemoniker import Daemonizer, SignalHandler1
 
 # Global configuration variables
 GOTIFY_SERVER_URL = None
@@ -18,12 +20,13 @@ HIGH_TEMPERATURE_THRESHOLD = None
 CRITICAL_TEMPERATURE_THRESHOLD = None
 CHECK_INTERVAL_SECONDS = None
 EMERGENCY_SHUTDOWN_DURATION_SECONDS = None
+PID_FILE = None
 
 def load_environment(logger: logging.Logger):
     """Load environment variables from .env file. The file must exist and contain all required variables."""
     global GOTIFY_SERVER_URL, GOTIFY_TOKEN, HIGH_TEMPERATURE_THRESHOLD, \
            CRITICAL_TEMPERATURE_THRESHOLD, CHECK_INTERVAL_SECONDS, \
-           EMERGENCY_SHUTDOWN_DURATION_SECONDS
+           EMERGENCY_SHUTDOWN_DURATION_SECONDS, PID_FILE
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(script_dir)
@@ -42,6 +45,15 @@ def load_environment(logger: logging.Logger):
 
     logger.info(f"Loading environment from {env_path}")
     load_dotenv(env_path, override=True)
+
+    # Set PID file location based on platform
+    if platform.system() == "Windows":
+        PID_FILE = os.path.join("C:\\ProgramData", "GPUTempMonitor", "gpu_monitor.pid")
+    else:
+        PID_FILE = "/var/run/gpu-monitor.pid"
+
+    # Create directory for PID file if it doesn't exist
+    os.makedirs(os.path.dirname(PID_FILE), exist_ok=True)
 
     # Load required configuration
     required_vars = {
@@ -166,34 +178,25 @@ class WindowsSystemLogger(SystemLogger):
                         )
                         win32evtlog.DeregisterEventSource(handle)
                     except pywintypes.error as e:
-                        # Log to console as fallback
-                        print(f"Failed to write to event log: {e}")
-                        print(f"{record.levelname} - {msg}")
-                except Exception as e:
-                    print(f"Error logging to event log: {str(e)}")
+                        # Since we can't log to event log, and we don't want console output,
+                        # we'll have to silently fail here
+                        pass
+                except Exception:
                     self.handleError(record)
         
-        # Add both event log and console handlers
+        # Add only event log handler, no console handler
         event_handler = WindowsEventLogHandler()
         event_handler.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
         logger.addHandler(event_handler)
-        
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-        logger.addHandler(console_handler)
 
 class LinuxSystemLogger(SystemLogger):
     def setup(self, logger: logging.Logger) -> None:
         from systemd.journal import JournalHandler
         
+        # Add only journal handler, no console handler
         journal_handler = JournalHandler(SYSLOG_IDENTIFIER='gpu-monitor')
         journal_handler.setFormatter(logging.Formatter('%(message)s'))
         logger.addHandler(journal_handler)
-        
-        # Also log to stdout for development
-        stdout_handler = logging.StreamHandler(sys.stdout)
-        stdout_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-        logger.addHandler(stdout_handler)
 
 class GPUTemperatureMonitor(ABC):
     @classmethod
@@ -248,7 +251,7 @@ class WindowsGPUTemperatureMonitor(GPUTemperatureMonitor):
         for path in nvidia_smi_paths:
             try:
                 # Just check if the file exists and is executable
-                subprocess.run([path, "--version"], capture_output=True, check=True)
+                subprocess.run([path, "--version"], capture_output=True, check=True, **self.get_subprocess_kwargs())
                 return path
             except FileNotFoundError:
                 continue
@@ -334,6 +337,7 @@ class GPUMonitor:
             return None
 
     def check_emergency_shutdown(self, temperature: int) -> None:
+        """Check if emergency shutdown is needed. Only called with valid temperature values."""
         current_time = time.time()
         
         if temperature >= CRITICAL_TEMPERATURE_THRESHOLD:
@@ -396,11 +400,112 @@ def setup_logging() -> logging.Logger:
     
     return logger
 
+def setup_signal_handlers(monitor: GPUMonitor, logger: logging.Logger):
+    """Set up signal handlers for graceful shutdown"""
+    def cleanup():
+        logger.info("Cleaning up before exit...")
+        try:
+            os.remove(PID_FILE)
+            logger.info("Removed PID file")
+        except (OSError, IOError) as e:
+            logger.warning(f"Failed to remove PID file: {e}")
+        
+        monitor.send_gotify_notification(
+            "GPU Monitor Stopping",
+            "The GPU temperature monitor service is shutting down.",
+            priority=3
+        )
+
+    def handle_signal(signum):
+        logger.info(f"Received signal {signum}, shutting down gracefully...")
+        cleanup()
+        sys.exit(0)
+
+    if platform.system() == "Windows":
+        import win32api
+        import win32con
+        
+        def win32_handler(type):
+            if type in (win32con.CTRL_C_EVENT, 
+                       win32con.CTRL_BREAK_EVENT,
+                       win32con.CTRL_CLOSE_EVENT,
+                       win32con.CTRL_LOGOFF_EVENT,
+                       win32con.CTRL_SHUTDOWN_EVENT):
+                cleanup()
+                return True
+            return False
+
+        win32api.SetConsoleCtrlHandler(win32_handler, True)
+    
+    # Register signal handlers directly
+    SignalHandler1(signal.SIGTERM, lambda *args: handle_signal(signal.SIGTERM))
+    SignalHandler1(signal.SIGINT, lambda *args: handle_signal(signal.SIGINT))
+    if platform.system() == "Windows":
+        SignalHandler1(signal.SIGBREAK, lambda *args: handle_signal(signal.SIGBREAK))
+
+    # Register cleanup on normal exit
+    import atexit
+    atexit.register(cleanup)
+
 def main():
+    """Entry point for the GPU temperature monitor"""
     logger = setup_logging()
-    load_environment(logger)
-    monitor = GPUMonitor(logger)
-    monitor.monitor()
+    
+    try:
+        with Daemonizer() as (is_setup, daemonizer):
+            if is_setup:
+                # This code runs before daemonization
+                load_environment(logger)
+                logger.info("Starting GPU temperature monitor...")
+                
+                if platform.system() == "Windows":
+                    # On Windows, we need to set up a handler for Ctrl+C events at the console level
+                    import win32api
+                    def win32_handler(type):
+                        return True  # Return True to prevent default handler
+                    win32api.SetConsoleCtrlHandler(win32_handler, True)
+                
+            is_parent, logger = daemonizer(
+                PID_FILE,
+                logger
+            )
+            
+            if is_parent:
+                # Parent process exits here
+                logger.info("GPU monitor daemon started successfully")
+                time.sleep(5000)
+                exit(0)
+
+        # We are now daemonized
+        # Reload environment in child process
+        load_environment(logger)
+        
+        monitor = GPUMonitor(logger)
+        setup_signal_handlers(monitor, logger)
+        
+        try:
+            # Send startup notification
+            monitor.send_gotify_notification(
+                "GPU Monitor Started",
+                "The GPU temperature monitor service has started and is now monitoring your GPU temperature.",
+                priority=3
+            )
+            
+            # Start monitoring loop
+            monitor.monitor()
+        except Exception as e:
+            error_msg = f"GPU Monitor service terminated unexpectedly: {str(e)}"
+            logger.error(error_msg)
+            monitor.send_gotify_notification(
+                "GPU Monitor Error",
+                error_msg,
+                priority=8
+            )
+            raise  # Re-raise to trigger the outer exception handler
+        
+    except Exception as e:
+        logger.error(f"Fatal error: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    main() 
+    main()

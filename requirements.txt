@@ -4,6 +4,7 @@
 
 requests>=2.31.0
 python-dotenv>=1.0.0
+daemoniker>=0.2.3  # Cross-platform daemon/service support
 
 # Windows-specific dependencies
 pywin32>=306; platform_system == "Windows"
