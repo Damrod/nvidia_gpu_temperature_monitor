@@ -25,87 +25,60 @@
         <!-- UI Configuration -->
         <UI>
             <TextStyle Id="Red" FaceName="Tahoma" Size="8" Red="255" Green="0" Blue="0"/>
-            <UIRef Id="WixUI_InstallDir"/>
+            <UIRef Id="WixUI_Mondo"/>
             <UIRef Id="WixUI_ErrorProgressText"/>
 
-            <Dialog Id="ConfigDlg" Width="370" Height="320" Title="Configuration Required">
+            <!-- Custom ConfigDlg -->
+            <Dialog Id="ConfigDlg" Width="370" Height="270" Title="!(loc.ConfigDlg_Title)">
                 <!-- Header -->
-                <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="Configure GPU Temperature Monitor" />
-                <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Please enter all required configuration values:" />
+                <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="!(loc.ConfigDlgTitle)" />
+                <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="!(loc.ConfigDlgDescription)" />
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.ConfigDlgBannerBitmap)" />
                 <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
 
-                <!-- Check Interval -->
-                <Control Id="CheckIntervalLabel" Type="Text" X="20" Y="60" Width="140" Height="15" Text="Check Interval (seconds):" />
-                <Control Id="CheckInterval" Type="Edit" X="160" Y="58" Width="50" Height="15" Property="CHECK_INTERVAL_SECONDS" />
-                <Control Id="CheckIntervalDesc" Type="Text" X="215" Y="60" Width="150" Height="15" Text="Required (10-3600)" />
+                <!-- Configuration Controls -->
+                <Control Id="IntervalLabel" Type="Text" X="20" Y="60" Width="290" Height="13" Text="!(loc.ConfigDlgIntervalLabel)" />
+                <Control Id="Interval" Type="Edit" X="20" Y="75" Width="50" Height="15" Property="POLLING_INTERVAL" />
+                <Control Id="IntervalError" Type="Text" X="75" Y="75" Width="290" Height="13" Hidden="yes" Text="{\Red}!(loc.ConfigDlgIntervalError)" />
 
-                <!-- High Temperature Threshold -->
-                <Control Id="HighTempLabel" Type="Text" X="20" Y="85" Width="140" Height="15" Text="High Temperature Threshold:" />
-                <Control Id="HighTemp" Type="Edit" X="160" Y="83" Width="50" Height="15" Property="HIGH_TEMPERATURE_THRESHOLD" />
-                <Control Id="HighTempDesc" Type="Text" X="215" Y="85" Width="150" Height="15" Text="Required (60-100 °C)" />
+                <Control Id="ThresholdLabel" Type="Text" X="20" Y="100" Width="290" Height="13" Text="!(loc.ConfigDlgThresholdLabel)" />
+                <Control Id="Threshold" Type="Edit" X="20" Y="115" Width="50" Height="15" Property="TEMPERATURE_THRESHOLD" />
+                <Control Id="ThresholdError" Type="Text" X="75" Y="115" Width="290" Height="13" Hidden="yes" Text="{\Red}!(loc.ConfigDlgThresholdError)" />
 
-                <!-- Critical Temperature Threshold -->
-                <Control Id="CriticalTempLabel" Type="Text" X="20" Y="110" Width="140" Height="15" Text="Critical Temperature:" />
-                <Control Id="CriticalTemp" Type="Edit" X="160" Y="108" Width="50" Height="15" Property="CRITICAL_TEMPERATURE_THRESHOLD" />
-                <Control Id="CriticalTempDesc" Type="Text" X="215" Y="110" Width="150" Height="15" Text="Required (80-110 °C)" />
-
-                <!-- Emergency Shutdown Duration -->
-                <Control Id="ShutdownDurationLabel" Type="Text" X="20" Y="135" Width="140" Height="15" Text="Emergency Shutdown Delay:" />
-                <Control Id="ShutdownDuration" Type="Edit" X="160" Y="133" Width="50" Height="15" Property="EMERGENCY_SHUTDOWN_DURATION_SECONDS" />
-                <Control Id="ShutdownDurationDesc" Type="Text" X="215" Y="135" Width="150" Height="15" Text="Required (seconds)" />
-
-                <!-- Gotify Server -->
-                <Control Id="GotifyServerLabel" Type="Text" X="20" Y="160" Width="140" Height="15" Text="Gotify Server URL:" />
-                <Control Id="GotifyServer" Type="Edit" X="160" Y="158" Width="190" Height="15" Property="GOTIFY_SERVER_URL" />
-                <Control Id="GotifyServerDesc" Type="Text" X="20" Y="175" Width="330" Height="15" Text="Required (e.g., https://gotify.example.org)" />
-
-                <!-- Gotify Token -->
-                <Control Id="GotifyTokenLabel" Type="Text" X="20" Y="195" Width="140" Height="15" Text="Gotify Token:" />
-                <Control Id="GotifyToken" Type="Edit" X="160" Y="193" Width="190" Height="15" Property="GOTIFY_TOKEN" />
-                <Control Id="GotifyTokenDesc" Type="Text" X="20" Y="210" Width="330" Height="15" Text="Required (your private notification token)" />
-
-                <!-- Navigation -->
-                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="Back">
-                    <Publish Event="NewDialog" Value="InstallDirDlg">1</Publish>
+                <!-- Navigation Buttons -->
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Text="!(loc.WixUINext)" Default="yes">
+                    <Condition Action="disable"><![CDATA[POLLING_INTERVAL < 1 OR POLLING_INTERVAL > 3600 OR TEMPERATURE_THRESHOLD < 0 OR TEMPERATURE_THRESHOLD > 110]]></Condition>
+                    <Condition Action="enable"><![CDATA[POLLING_INTERVAL >= 1 AND POLLING_INTERVAL <= 3600 AND TEMPERATURE_THRESHOLD >= 0 AND TEMPERATURE_THRESHOLD <= 110]]></Condition>
                 </Control>
-                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Text="Next" Default="yes">
-                    <Condition Action="disable">
-                        <![CDATA[CHECK_INTERVAL_SECONDS < 10 OR CHECK_INTERVAL_SECONDS > 3600 OR
-                        HIGH_TEMPERATURE_THRESHOLD < 60 OR HIGH_TEMPERATURE_THRESHOLD > 100 OR
-                        CRITICAL_TEMPERATURE_THRESHOLD < 80 OR CRITICAL_TEMPERATURE_THRESHOLD > 110 OR
-                        EMERGENCY_SHUTDOWN_DURATION_SECONDS <= 0 OR
-                        GOTIFY_SERVER_URL = "" OR GOTIFY_TOKEN = ""]]>
-                    </Condition>
-                    <Condition Action="enable">
-                        <![CDATA[CHECK_INTERVAL_SECONDS >= 10 AND CHECK_INTERVAL_SECONDS <= 3600 AND
-                        HIGH_TEMPERATURE_THRESHOLD >= 60 AND HIGH_TEMPERATURE_THRESHOLD <= 100 AND
-                        CRITICAL_TEMPERATURE_THRESHOLD >= 80 AND CRITICAL_TEMPERATURE_THRESHOLD <= 110 AND
-                        EMERGENCY_SHUTDOWN_DURATION_SECONDS > 0 AND
-                        GOTIFY_SERVER_URL <> "" AND GOTIFY_TOKEN <> ""]]>
-                    </Condition>
-                    <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
-                </Control>
-                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
                     <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
                 </Control>
             </Dialog>
 
-            <!-- Dialog Sequence -->
-            <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="ConfigDlg">WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"</Publish>
-            <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="ConfigDlg" Order="1">NOT Installed</Publish>
+            <!-- Insert our dialog after InstallDirDlg -->
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="ConfigDlg" Order="4">WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"</Publish>
+            <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="LicenseAgreementDlg">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Property="_BrowseProperty" Value="[WIXUI_INSTALLDIR]" Order="1">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Event="SpawnDialog" Value="BrowseDlg" Order="2">1</Publish>
+            <Publish Dialog="ConfigDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg">1</Publish>
+            <Publish Dialog="ConfigDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg">
+                <![CDATA[POLLING_INTERVAL >= 1 AND POLLING_INTERVAL <= 3600 AND TEMPERATURE_THRESHOLD >= 0 AND TEMPERATURE_THRESHOLD <= 110]]>
+            </Publish>
 
             <!-- Validation Events -->
             <Publish Dialog="ConfigDlg" Control="Next" Event="Show" Value="IntervalError">
-                <![CDATA[CHECK_INTERVAL_SECONDS < 10 OR CHECK_INTERVAL_SECONDS > 3600]]>
+                <![CDATA[POLLING_INTERVAL < 1 OR POLLING_INTERVAL > 3600]]>
             </Publish>
             <Publish Dialog="ConfigDlg" Control="Next" Event="Hide" Value="IntervalError">
-                <![CDATA[CHECK_INTERVAL_SECONDS >= 10 AND CHECK_INTERVAL_SECONDS <= 3600]]>
+                <![CDATA[POLLING_INTERVAL >= 1 AND POLLING_INTERVAL <= 3600]]>
             </Publish>
             <Publish Dialog="ConfigDlg" Control="Next" Event="Show" Value="ThresholdError">
-                <![CDATA[HIGH_TEMPERATURE_THRESHOLD < 60 OR HIGH_TEMPERATURE_THRESHOLD > 100 OR CRITICAL_TEMPERATURE_THRESHOLD < 80 OR CRITICAL_TEMPERATURE_THRESHOLD > 110]]>
+                <![CDATA[TEMPERATURE_THRESHOLD < 0 OR TEMPERATURE_THRESHOLD > 110]]>
             </Publish>
             <Publish Dialog="ConfigDlg" Control="Next" Event="Hide" Value="ThresholdError">
-                <![CDATA[HIGH_TEMPERATURE_THRESHOLD >= 60 AND HIGH_TEMPERATURE_THRESHOLD <= 100 AND CRITICAL_TEMPERATURE_THRESHOLD >= 80 AND CRITICAL_TEMPERATURE_THRESHOLD <= 110]]>
+                <![CDATA[TEMPERATURE_THRESHOLD >= 0 AND TEMPERATURE_THRESHOLD <= 110]]>
             </Publish>
 
             <!-- Debug Dialog -->
@@ -115,10 +88,10 @@
                 </Control>
                 <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="Python Installation Debug Info" />
                 <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="The following Python installations were found:" />
-                <Control Id="Store1Label" Type="Text" X="20" Y="50" Width="100" Height="13" Text="Store Path 1:" />
+                <Control Id="Store1Label" Type="Text" X="20" Y="50" Width="100" Height="13" Text="Store Path:" />
                 <Control Id="Store1Value" Type="Text" X="120" Y="50" Width="230" Height="13" Text="[PYTHONSTORE_PATH]" />
-                <Control Id="Store2Label" Type="Text" X="20" Y="70" Width="100" Height="13" Text="Store Path 2:" />
-                <Control Id="Store2Value" Type="Text" X="120" Y="70" Width="230" Height="13" Text="[PYTHONSTORE_PATH2]" />
+                <Control Id="Store2Label" Type="Text" X="20" Y="70" Width="100" Height="13" Text="Store Path (Alt):" />
+                <Control Id="Store2Value" Type="Text" X="120" Y="70" Width="230" Height="13" Text="[PYTHONSTORE_PATH_ALT]" />
                 <Control Id="Python313Label" Type="Text" X="20" Y="90" Width="100" Height="13" Text="Python 3.13:" />
                 <Control Id="Python313Value" Type="Text" X="120" Y="90" Width="230" Height="13" Text="[PYTHON313_REGKEY]" />
                 <Control Id="Python312Label" Type="Text" X="20" Y="110" Width="100" Height="13" Text="Python 3.12:" />
@@ -126,7 +99,7 @@
                 <Control Id="Python311Label" Type="Text" X="20" Y="130" Width="100" Height="13" Text="Python 3.11:" />
                 <Control Id="Python311Value" Type="Text" X="120" Y="130" Width="230" Height="13" Text="[PYTHON311_REGKEY]" />
                 <Control Id="FinalLabel" Type="Text" X="20" Y="170" Width="100" Height="13" Text="Selected Python:" />
-                <Control Id="FinalValue" Type="Text" X="120" Y="170" Width="230" Height="13" Text="[PYTHON_REGKEY]" />
+                <Control Id="FinalValue" Type="Text" X="120" Y="170" Width="230" Height="13" Text="[PYTHON_PATH]" />
             </Dialog>
 
             <!-- Show debug dialog after welcome -->
@@ -135,44 +108,39 @@
         </UI>
 
         <!-- Properties for configuration -->
-        <Property Id="GOTIFY_TOKEN" Secure="yes"/>
-        <Property Id="GOTIFY_SERVER_URL"/>
-        <Property Id="HIGH_TEMPERATURE_THRESHOLD"/>
-        <Property Id="CRITICAL_TEMPERATURE_THRESHOLD"/>
-        <Property Id="CHECK_INTERVAL_SECONDS"/>
-        <Property Id="EMERGENCY_SHUTDOWN_DURATION_SECONDS"/>
-        <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER"/>
+        <Property Id="GOTIFY_SERVER" Value="https://your-gotify-server" />
+        <Property Id="GOTIFY_TOKEN" Value="your-gotify-token" />
+        <Property Id="HIGH_TEMP" Value="80" />
+        <Property Id="CRITICAL_TEMP" Value="90" />
+        <Property Id="CHECK_INTERVAL" Value="60" />
+        <Property Id="SHUTDOWN_DELAY" Value="300" />
+        <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
         <Property Id="BannerBitmap" Value="WixUI_Bmp_Banner" />
         <Property Id="PYTHON_REGKEY" Secure="yes" />
         
         <Feature Id="ProductFeature" Title="GPU Temperature Monitor" Level="1">
+            <ComponentRef Id="VenvFolderComponent"/>
+            <ComponentRef Id="VenvDirComponent"/>
             <ComponentGroupRef Id="ProductComponents" />
             <ComponentGroupRef Id="ProgramMenuDir"/>
-            <ComponentRef Id="LogsFolderComponent"/>
-            <ComponentRef Id="InstallFolderComponent"/>
-            <ComponentRef Id="VenvFolderComponent"/>
-            <ComponentRef Id="SrcFolderComponent"/>
-            <ComponentRef Id="BinFolderComponent"/>
-            <ComponentRef Id="ServiceFolderComponent"/>
-            <ComponentRef Id="ConfigFolderComponent"/>
         </Feature>
 
-        <!-- Check for Python installation -->
-        <!-- Windows Store Python -->
+        <!-- Windows Store Python: Search for the full path to python.exe -->
         <Property Id="PYTHONSTORE_PATH">
-            <DirectorySearch Id="PythonStoreSearch" Path="[LocalAppDataFolder]Microsoft\WindowsApps" AssignToProperty="yes">
-                <FileSearch Id="PythonExeSearch1" Name="python.exe"/>
-            </DirectorySearch>
+            <RegistrySearch Id="PythonStoreRegSearch"
+                          Root="HKCU"
+                          Key="Software\Python\PythonCore\3.13\InstallPath"
+                          Name="ExecutablePath"
+                          Type="raw"
+                          Win64="yes"/>
         </Property>
-        <Property Id="PYTHONSTORE_PATH2">
-            <DirectorySearch Id="PythonStoreSearch2" Path="[LocalAppDataFolder]Microsoft\WindowsApps" AssignToProperty="yes">
-                <FileSearch Id="PythonExeSearch2" Name="python.exe"/>
-            </DirectorySearch>
-        </Property>
-        <Property Id="PYTHONSTORE_PATH3">
-            <DirectorySearch Id="PythonStoreSearch3" Path="[LocalAppDataFolder]Programs\Python" Depth="2" AssignToProperty="yes">
-                <FileSearch Id="PythonExeSearch3" Name="python.exe"/>
-            </DirectorySearch>
+
+        <!-- Additional search for Store Python -->
+        <Property Id="PYTHONSTORE_PATH_ALT">
+            <RegistrySearch Id="PythonStoreRegSearchAlt"
+                          Root="HKCU"
+                          Key="Software\Microsoft\Windows\CurrentVersion\App Paths\python.exe"
+                          Type="raw"/>
         </Property>
 
         <!-- Traditional Python installations -->
@@ -261,34 +229,61 @@
                           Win64="yes"/>
         </Property>
 
-        <!-- Set PYTHON_REGKEY to the first found version -->
-        <SetProperty Id="SetPythonRegKeyStore" After="AppSearch" Value="[LocalAppDataFolder]Microsoft\WindowsApps\python.exe">
-            PYTHONSTORE_PATH
+        <!-- Additional search for Python in AppData Programs -->
+        <Property Id="PYTHONAPPDATA_PATH">
+            <DirectorySearch Id="PythonAppdataSearch" 
+                            Path="[LocalAppDataFolder]\Programs\Python\Python313" 
+                            Depth="1">
+                <FileSearch Id="PythonExeAppdata" Name="python.exe"/>
+            </DirectorySearch>
+        </Property>
+
+        <!-- Set PYTHON_PATH property for use in custom actions -->
+        <Property Id="PYTHON_PATH" Secure="yes" />
+
+        <!-- Set the Python path based on the first found version -->
+        <SetProperty Id="PYTHON_PATH" Action="SetPythonPathAppdata" After="AppSearch" Value="[PYTHONAPPDATA_PATH]">
+            PYTHONAPPDATA_PATH
         </SetProperty>
-        <SetProperty Id="SetPythonRegKey313" After="AppSearch" Value="[PYTHON313_REGKEY]">
-            NOT PYTHONSTORE_PATH AND PYTHON313_REGKEY
+        <SetProperty Id="PYTHON_PATH" Action="SetPythonPathStore" After="SetPythonPathAppdata" Value="[PYTHONSTORE_PATH]">
+            NOT PYTHONAPPDATA_PATH AND PYTHONSTORE_PATH
         </SetProperty>
-        <SetProperty Id="SetPythonRegKey312" After="AppSearch" Value="[PYTHON312_REGKEY]">
-            NOT PYTHONSTORE_PATH AND NOT PYTHON313_REGKEY AND PYTHON312_REGKEY
+        <SetProperty Id="PYTHON_PATH" Action="SetPythonPathStoreAlt" After="SetPythonPathStore" Value="[PYTHONSTORE_PATH_ALT]">
+            NOT PYTHONAPPDATA_PATH AND NOT PYTHONSTORE_PATH AND PYTHONSTORE_PATH_ALT
         </SetProperty>
-        <SetProperty Id="SetPythonRegKey311" After="AppSearch" Value="[PYTHON311_REGKEY]">
-            NOT PYTHONSTORE_PATH AND NOT PYTHON313_REGKEY AND NOT PYTHON312_REGKEY AND PYTHON311_REGKEY
+        <SetProperty Id="PYTHON_PATH" Action="SetPythonPath313" After="SetPythonPathStoreAlt" Value="[PYTHON313_REGKEY]">
+            NOT PYTHONAPPDATA_PATH AND NOT PYTHONSTORE_PATH AND NOT PYTHONSTORE_PATH_ALT AND PYTHON313_REGKEY
         </SetProperty>
 
+        <!-- Launch condition to ensure we have a Python path -->
         <Condition Message="This application requires Python 3.8 or higher. Please install Python 3.8 or higher and try again.">
-            <![CDATA[Installed OR PYTHONSTORE_PATH OR PYTHONSTORE_PATH2 OR PYTHONSTORE_PATH3 OR PYTHON313_REGKEY OR PYTHON312_REGKEY OR PYTHON311_REGKEY OR PYTHON310_REGKEY OR PYTHON39_REGKEY OR PYTHON38_REGKEY]]>
+            <![CDATA[Installed OR PYTHON_PATH]]>
         </Condition>
 
         <!-- Directory Structure -->
         <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="CommonAppDataFolder">
+                <Directory Id="VENVFOLDER" Name="GPUTempMonitor">
+                    <Component Id="VenvFolderComponent" Guid="12345678-1234-1234-1234-333333333333">
+                        <CreateFolder Directory="VENVFOLDER">
+                            <Permission User="Everyone" GenericAll="yes"/>
+                        </CreateFolder>
+                        <RemoveFolder Id="RemoveVenvFolder" On="uninstall" />
+                    </Component>
+                    <Directory Id="VENVDIR" Name="venv">
+                        <Component Id="VenvDirComponent" Guid="12345678-1234-1234-1234-444444444444">
+                            <CreateFolder>
+                                <Permission User="Everyone" GenericAll="yes"/>
+                            </CreateFolder>
+                            <RemoveFolder Id="RemoveVenvDir" On="uninstall" />
+                        </Component>
+                    </Directory>
+                </Directory>
+            </Directory>
             <Directory Id="ProgramFiles64Folder">
                 <Directory Id="INSTALLFOLDER" Name="GPU Temperature Monitor">
-                    <Directory Id="VENVFOLDER" Name=".venv"/>
-                    <Directory Id="SRCFOLDER" Name="src"/>
-                    <Directory Id="BinDir" Name="bin" />
-                    <Directory Id="ServiceDir" Name="service" />
+                    <Directory Id="PSScriptsDir" Name="ps" />
                     <Directory Id="ConfigFolder" Name="config" />
-                    <Directory Id="LogsFolder" Name="logs" />
                 </Directory>
             </Directory>
             <Directory Id="ProgramMenuFolder">
@@ -299,45 +294,25 @@
 
         <!-- Components -->
         <ComponentGroup Id="ProductComponents">
-            <!-- Directory Components -->
-            <Component Id="LogsFolderComponent" Directory="LogsFolder" Win64="yes" Guid="99999999-9999-9999-9999-999999999999">
-                <CreateFolder />
-                <RemoveFolder Id="RemoveLogsFolder" On="uninstall" />
+            <!-- PowerShell Scripts -->
+            <Component Id="PowerShellScripts" Directory="PSScriptsDir" Win64="yes" Guid="12345678-1234-1234-1234-222222222222">
+                <File Id="CreateVenvPS" 
+                      Name="create_venv.ps1" 
+                      Source="..\scripts\ps\create_venv.ps1" 
+                      KeyPath="yes"/>
+                <File Id="InstallReqPS" 
+                      Name="install_requirements.ps1" 
+                      Source="..\scripts\ps\install_requirements.ps1"/>
+                <File Id="WriteConfigPS" 
+                      Name="write_config.ps1" 
+                      Source="..\scripts\ps\write_config.ps1"/>
+                <File Id="LoggingPS" 
+                      Name="logging.ps1" 
+                      Source="..\scripts\ps\logging.ps1"/>
             </Component>
 
-            <!-- Directory Components with explicit GUIDs -->
-            <Component Id="InstallFolderComponent" Directory="INSTALLFOLDER" Win64="yes" Guid="11111111-1111-1111-1111-111111111111">
-                <CreateFolder />
-                <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
-            </Component>
-            
-            <Component Id="VenvFolderComponent" Directory="VENVFOLDER" Win64="yes" Guid="22222222-2222-2222-2222-222222222222">
-                <CreateFolder />
-                <RemoveFolder Id="RemoveVenvFolder" On="uninstall" />
-            </Component>
-            
-            <Component Id="SrcFolderComponent" Directory="SRCFOLDER" Win64="yes" Guid="33333333-3333-3333-3333-333333333333">
-                <CreateFolder />
-                <RemoveFolder Id="RemoveSrcFolder" On="uninstall" />
-            </Component>
-            
-            <Component Id="BinFolderComponent" Directory="BinDir" Win64="yes" Guid="44444444-4444-4444-4444-444444444444">
-                <CreateFolder />
-                <RemoveFolder Id="RemoveBinFolder" On="uninstall" />
-            </Component>
-            
-            <Component Id="ServiceFolderComponent" Directory="ServiceDir" Win64="yes" Guid="55555555-5555-5555-5555-555555555555">
-                <CreateFolder />
-                <RemoveFolder Id="RemoveServiceFolder" On="uninstall" />
-            </Component>
-            
-            <Component Id="ConfigFolderComponent" Directory="ConfigFolder" Win64="yes" Guid="66666666-6666-6666-6666-666666666666">
-                <CreateFolder />
-                <RemoveFolder Id="RemoveConfigFolderComp" On="uninstall" />
-            </Component>
-
-            <!-- Main Component -->
-            <Component Id="MainExecutable" Directory="INSTALLFOLDER" Win64="yes" Guid="77777777-7777-7777-7777-777777777777">
+            <!-- Main Components -->
+            <Component Id="MainExecutable" Directory="INSTALLFOLDER" Win64="yes" Guid="*">
                 <File Id="MainPyFile" 
                       Name="gpu_monitor.py" 
                       Source="..\src\gpu_monitor.py" 
@@ -375,7 +350,7 @@
             </Component>
 
             <!-- Service Installation -->
-            <Component Id="ServiceInstallation" Directory="INSTALLFOLDER" Win64="yes" Guid="88888888-8888-8888-8888-888888888888">
+            <Component Id="ServiceInstallation" Directory="INSTALLFOLDER" Win64="yes" Guid="*">
                 <RegistryValue Root="HKLM"
                              Key="SOFTWARE\GPU Temperature Monitor"
                              Name="Service_Installed"
@@ -412,21 +387,6 @@
                       Source="..\dist\nvidia-smi.exe" 
                       KeyPath="yes"/>
             </Component>
-
-            <!-- Service Files -->
-            <Component Id="ServicePyFile" Directory="ServiceDir" Win64="yes" Guid="*">
-                <File Id="GpuMonitor" 
-                      Name="gpu_monitor.py" 
-                      Source="..\src\gpu_monitor.py" 
-                      KeyPath="yes"/>
-            </Component>
-
-            <Component Id="ServiceRequirements" Directory="ServiceDir" Win64="yes" Guid="*">
-                <File Id="ServiceReq" 
-                      Name="requirements.txt" 
-                      Source="..\requirements.txt"
-                      KeyPath="yes"/>
-            </Component>
         </ComponentGroup>
 
         <!-- Start Menu Shortcuts -->
@@ -447,60 +407,94 @@
             </Component>
         </ComponentGroup>
 
-        <!-- Rollback-resistant logging -->
-        <Property Id="LOGPATH" Value="[TempFolder]GPUMonitorInstall" Secure="yes"/>
+        <!-- Custom Actions -->
+        <Property Id="POWERSHELL_PATH" Value="powershell.exe"/>
         
-        <CustomAction Id="SetupRollbackLogging"
-                     ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;$logPath = '[LOGPATH]'; if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Path $logPath -Force }; $logFile = Join-Path $logPath ('install_' + (Get-Date -Format 'yyyy-MM-dd_HH-mm-ss') + '.log'); '=== Installation Started at ' + (Get-Date) + ' ===' | Out-File -FilePath $logFile -Encoding UTF8&quot;"
-                     Execute="immediate"
-                     Return="check"/>
+        <!-- Custom Actions -->
+        <CustomAction Id="SetCreateVenvData" 
+                     Property="CreateVenv" 
+                     Value="&quot;[PYTHON_PATH]&quot; &quot;[VENVFOLDER]venv&quot;"
+                     Execute="immediate"/>
 
-        <!-- Modified custom actions to use rollback-resistant logging -->
-        <CustomAction Id="CreateVenv_WithLogging" 
-                     Directory="INSTALLFOLDER"
-                     ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;$logPath = '[LOGPATH]'; if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Path $logPath -Force }; try { Write-Output 'Creating virtual environment...' | Out-File '$logPath\venv_creation.log' -Append; &amp; '[PYTHON_REGKEY]' -m venv .venv 2>&gt;&amp;1 | Out-File '$logPath\venv_creation.log' -Append } catch { $_.Exception.Message | Out-File '$logPath\venv_creation.log' -Append; exit 1 }&quot;"
+        <CustomAction Id="SetInstallDepsData" 
+                     Property="InstallDeps" 
+                     Value="[VENVFOLDER]venv\Scripts\python.exe [INSTALLFOLDER]requirements.txt" 
+                     Execute="immediate"/>
+
+        <CustomAction Id="SetConfigData" 
+                     Property="WriteConfig" 
+                     Value="[ConfigFolder]config.ini [GOTIFY_TOKEN] [GOTIFY_SERVER_URL] [HIGH_TEMPERATURE_THRESHOLD] [CRITICAL_TEMPERATURE_THRESHOLD] [CHECK_INTERVAL_SECONDS] [EMERGENCY_SHUTDOWN_DURATION_SECONDS]" 
+                     Execute="immediate"/>
+
+        <CustomAction Id="LogPythonPaths"
+                     Property="POWERSHELL_PATH"
+                     ExeCommand='-NoProfile -ExecutionPolicy Bypass -File "[PSScriptsDir]logging.ps1" "Python paths - Store: [PYTHONSTORE_PATH], Store Alt: [PYTHONSTORE_PATH_ALT], 3.13: [PYTHON313_REGKEY], 3.12: [PYTHON312_REGKEY], 3.11: [PYTHON311_REGKEY], Selected: [PYTHON_PATH]"'
+                     Execute="deferred"
+                     Return="check"
+                     Impersonate="no"/>
+
+        <CustomAction Id="LogVenvCreation"
+                     Property="POWERSHELL_PATH"
+                     ExeCommand='-NoProfile -ExecutionPolicy Bypass -File "[PSScriptsDir]logging.ps1" "Creating virtual environment at [VENVFOLDER]venv using Python at [PYTHON_PATH]"'
+                     Execute="deferred"
+                     Return="check"
+                     Impersonate="no"/>
+
+        <CustomAction Id="CreateVenv" 
+                     Property="POWERSHELL_PATH"
+                     ExeCommand="-NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]ps\create_venv.ps1&quot; [CreateVenv]"
                      Execute="deferred"
                      Impersonate="no"
                      Return="check"/>
 
-        <CustomAction Id="InstallDeps_WithLogging" 
-                     Directory="INSTALLFOLDER"
-                     ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;$logPath = '[LOGPATH]'; if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Path $logPath -Force }; try { Write-Output 'Installing dependencies...' | Out-File '$logPath\pip_install.log' -Append; &amp; '.\venv\Scripts\python.exe' -m pip install -r requirements.txt 2>&gt;&amp;1 | Out-File '$logPath\pip_install.log' -Append } catch { $_.Exception.Message | Out-File '$logPath\pip_install.log' -Append; exit 1 }&quot;"
+        <CustomAction Id="LogVenvCreationComplete"
+                     Property="POWERSHELL_PATH"
+                     ExeCommand='-NoProfile -ExecutionPolicy Bypass -File "[PSScriptsDir]logging.ps1" "Virtual environment creation completed"'
+                     Execute="deferred"
+                     Return="check"
+                     Impersonate="no"/>
+
+        <CustomAction Id="LogDepsInstallStart"
+                     Property="POWERSHELL_PATH"
+                     ExeCommand='-NoProfile -ExecutionPolicy Bypass -File "[PSScriptsDir]logging.ps1" "Starting dependencies installation"'
+                     Execute="deferred"
+                     Return="check"
+                     Impersonate="no"/>
+
+        <CustomAction Id="InstallDeps" 
+                     Property="POWERSHELL_PATH"
+                     ExeCommand='-NoProfile -ExecutionPolicy Bypass -File "[INSTALLFOLDER]ps\install_requirements.ps1" "[InstallDeps]"'
                      Execute="deferred"
                      Impersonate="no"
                      Return="check"/>
 
-        <!-- Debug logging custom actions -->
-        <CustomAction Id="LogPythonPaths" 
-                     ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;$logPath = '[LOGPATH]'; if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Path $logPath -Force }; @('=== Python Paths at ' + (Get-Date) + ' ===', 'PYTHONSTORE_PATH = [PYTHONSTORE_PATH]', 'PYTHONSTORE_PATH2 = [PYTHONSTORE_PATH2]', 'PYTHONSTORE_PATH3 = [PYTHONSTORE_PATH3]', 'PYTHON313_REGKEY = [PYTHON313_REGKEY]', 'PYTHON312_REGKEY = [PYTHON312_REGKEY]', 'PYTHON311_REGKEY = [PYTHON311_REGKEY]', 'Selected PYTHON_REGKEY = [PYTHON_REGKEY]') | Out-File -FilePath (Join-Path $logPath 'python_paths.log') -Append&quot;"
-                     Execute="immediate"
-                     Return="check"/>
+        <CustomAction Id="LogDepsInstallComplete"
+                     Property="POWERSHELL_PATH"
+                     ExeCommand='-NoProfile -ExecutionPolicy Bypass -File "[PSScriptsDir]logging.ps1" "Dependencies installation completed"'
+                     Execute="deferred"
+                     Return="check"
+                     Impersonate="no"/>
 
-        <!-- Configuration Custom Action -->
         <CustomAction Id="WriteConfig" 
-                     ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;$configPath = '[ConfigFolder]config.ini'; @('[GPU Monitor Settings]', 'gotify_token=[GOTIFY_TOKEN]', 'gotify_server_url=[GOTIFY_SERVER_URL]', 'high_temperature_threshold=[HIGH_TEMPERATURE_THRESHOLD]', 'critical_temperature_threshold=[CRITICAL_TEMPERATURE_THRESHOLD]', 'check_interval_seconds=[CHECK_INTERVAL_SECONDS]', 'emergency_shutdown_duration_seconds=[EMERGENCY_SHUTDOWN_DURATION_SECONDS]') | Out-File -FilePath $configPath -Encoding UTF8&quot;"
+                     Property="POWERSHELL_PATH"
+                     ExeCommand='-NoProfile -ExecutionPolicy Bypass -File "[PSScriptsDir]write_config.ps1" "[WriteConfig]"'
                      Execute="deferred"
-                     Impersonate="no"
-                     Return="check"/>
-
-        <!-- Error logging custom actions -->
-        <CustomAction Id="LogError_Immediate_Venv" 
-                     ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;$logPath = '[LOGPATH]'; if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Path $logPath -Force }; @('=== ERROR during virtual environment creation at ' + (Get-Date) + ' ===', 'Action: CreateVenv_WithLogging', 'Error: [LastError]') | Out-File -FilePath (Join-Path $logPath 'error.log') -Append&quot;"
-                     Execute="immediate"
-                     Return="check"/>
-
-        <CustomAction Id="LogError_Immediate_Deps" 
-                     ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;$logPath = '[LOGPATH]'; if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Path $logPath -Force }; @('=== ERROR during dependency installation at ' + (Get-Date) + ' ===', 'Action: InstallDeps_WithLogging', 'Error: [LastError]') | Out-File -FilePath (Join-Path $logPath 'error.log') -Append&quot;"
-                     Execute="immediate"
-                     Return="check"/>
+                     Return="check"
+                     Impersonate="no"/>
 
         <!-- Install Sequence -->
         <InstallExecuteSequence>
-            <Custom Action="SetupRollbackLogging" Before="InstallInitialize">NOT Installed</Custom>
-            <Custom Action="LogPythonPaths" After="InstallFiles">NOT Installed</Custom>
-            <Custom Action="WriteConfig" After="LogPythonPaths">NOT Installed</Custom>
-            <Custom Action="CreateVenv_WithLogging" After="WriteConfig">NOT Installed</Custom>
-            <Custom Action="InstallDeps_WithLogging" After="CreateVenv_WithLogging">NOT Installed AND $CreateVenv_WithLogging=1</Custom>
+            <Custom Action="LogPythonPaths" Before="SetConfigData">NOT Installed</Custom>
+            <Custom Action="SetCreateVenvData" Before="CreateVenv">NOT Installed</Custom>
+            <Custom Action="LogVenvCreation" Before="CreateVenv">NOT Installed</Custom>
+            <Custom Action="CreateVenv" After="InstallFiles">NOT Installed</Custom>
+            <Custom Action="LogVenvCreationComplete" After="CreateVenv">NOT Installed</Custom>
+            <Custom Action="SetInstallDepsData" Before="InstallDeps">NOT Installed</Custom>
+            <Custom Action="LogDepsInstallStart" Before="InstallDeps">NOT Installed</Custom>
+            <Custom Action="InstallDeps" After="CreateVenv">NOT Installed</Custom>
+            <Custom Action="LogDepsInstallComplete" After="InstallDeps">NOT Installed</Custom>
+            <Custom Action="SetConfigData" Before="WriteConfig">NOT Installed</Custom>
+            <Custom Action="WriteConfig" After="InstallDeps">NOT Installed</Custom>
         </InstallExecuteSequence>
 
     </Product>

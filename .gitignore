@@ -6,6 +6,7 @@
 *.pyw
 *.pyz
 *.pywz
+venv
 
 # PyInstaller
 build/
