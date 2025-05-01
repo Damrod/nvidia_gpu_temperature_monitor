@@ -27,8 +27,7 @@ install-files:
 	sudo cp src/gpu_monitor.py $(INSTALL_DIR)/
 	sudo cp requirements.txt $(INSTALL_DIR)/
 	sudo cp .env $(INSTALL_DIR)/ 2>/dev/null || true
-	# Create a new service file with correct paths
-	sed 's|/usr/local/lib/gpu-monitor|$(INSTALL_DIR)|g' $(SERVICE_SRC) > $(INSTALL_DIR)/$(SERVICE_FILE)
+	sed 's|/usr/local/lib/gpu-monitor|$(INSTALL_DIR)|g' $(SERVICE_SRC) | sudo tee -a $(INSTALL_DIR)/$(SERVICE_FILE) > /dev/null
 	sudo chown -R root:root $(INSTALL_DIR)
 	sudo chmod 755 $(INSTALL_DIR)
 	sudo chmod 755 $(INSTALL_DIR)/gpu_monitor.py
@@ -36,7 +35,7 @@ install-files:
 
 install-service:
 	@echo "Installing systemd service..."
-	sudo ln -sf $(INSTALL_DIR)/$(SERVICE_FILE) $(SYSTEMD_DIR)/$(SERVICE_NAME)
+	sudo ln -s $(INSTALL_DIR)/$(SERVICE_FILE) $(SYSTEMD_DIR)/$(SERVICE_FILE)
 	sudo systemctl daemon-reload
 	sudo systemctl enable $(SERVICE_NAME)
 	@echo "Service installed. You can start it with: sudo systemctl start $(SERVICE_NAME)"
@@ -46,7 +45,7 @@ uninstall:
 	@echo "Uninstalling $(SERVICE_NAME)..."
 	sudo systemctl stop $(SERVICE_NAME) 2>/dev/null || true
 	sudo systemctl disable $(SERVICE_NAME) 2>/dev/null || true
-	sudo rm -f $(SYSTEMD_DIR)/$(SERVICE_NAME)
+	sudo rm $(SYSTEMD_DIR)/$(SERVICE_FILE) || true
 	sudo systemctl daemon-reload
 	sudo rm -rf $(INSTALL_DIR)
 	@echo "Uninstallation complete"
