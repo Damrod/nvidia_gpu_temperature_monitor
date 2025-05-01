@@ -518,7 +518,7 @@ def setup_signal_handlers(monitor: GPUMonitor, logger: logging.Logger):
 def main():
     """Entry point for the GPU temperature monitor"""
     logger = setup_logging()
-    
+    load_environment(logger)
     try:
         # Create appropriate process manager
         process_manager = ProcessManager.create(logger)
