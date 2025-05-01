@@ -49,11 +49,12 @@ def load_environment(logger: logging.Logger):
     # Set PID file location based on platform
     if platform.system() == "Windows":
         PID_FILE = os.path.join("C:\\ProgramData", "GPUTempMonitor", "gpu_monitor.pid")
+        # Create directory for PID file if it doesn't exist
+        os.makedirs(os.path.dirname(PID_FILE), exist_ok=True)
     else:
-        PID_FILE = "/var/run/gpu-monitor.pid"
-
-    # Create directory for PID file if it doesn't exist
-    os.makedirs(os.path.dirname(PID_FILE), exist_ok=True)
+        # On Linux, when running as a service, systemd will handle the PID file
+        PID_FILE = "/run/gpu-monitor.pid"
+        # Don't try to create the directory on Linux as it's managed by systemd
 
     # Load required configuration
     required_vars = {
@@ -386,6 +387,73 @@ class GPUMonitor:
             
             time.sleep(CHECK_INTERVAL_SECONDS)
 
+class ProcessManager(ABC):
+    """Base class for process management and daemonization."""
+    
+    @classmethod
+    def create(cls, logger: logging.Logger) -> 'ProcessManager':
+        """Factory method to create the appropriate process manager for the current platform and environment"""
+        system = platform.system()
+        
+        # If we're running under systemd, use the systemd manager regardless of platform
+        if os.getenv('INVOCATION_ID') is not None:  # systemd sets this
+            return SystemdProcessManager(logger)
+            
+        # Otherwise use platform-specific manager
+        manager_map = {
+            "Windows": DaemonikerProcessManager,
+            "Linux": DaemonikerProcessManager  # We can use Daemoniker on Linux when not under systemd
+        }
+        
+        manager_class = manager_map.get(system)
+        if manager_class is None:
+            raise NotImplementedError(f"No process manager implementation for platform: {system}")
+        
+        return manager_class(logger)
+
+    def __init__(self, logger: logging.Logger):
+        self.logger = logger
+
+    @abstractmethod
+    def daemonize(self) -> None:
+        """Handle process daemonization"""
+        pass
+
+class SystemdProcessManager(ProcessManager):
+    """Process manager for systemd services - no daemonization needed"""
+    
+    def daemonize(self) -> None:
+        """Under systemd, we don't need to daemonize"""
+        self.logger.info("Starting under systemd control...")
+
+class DaemonikerProcessManager(ProcessManager):
+    """Process manager using Daemoniker for cross-platform daemonization"""
+    
+    def daemonize(self) -> None:
+        with Daemonizer() as (is_setup, daemonizer):
+            if is_setup:
+                self.logger.info("Starting GPU temperature monitor...")
+                
+                if platform.system() == "Windows":
+                    # On Windows, we need to set up a handler for Ctrl+C events
+                    import win32api
+                    def win32_handler(type):
+                        return True
+                    win32api.SetConsoleCtrlHandler(win32_handler, True)
+            
+            is_parent, new_logger = daemonizer(
+                PID_FILE,
+                self.logger
+            )
+            
+            if is_parent:
+                # Parent process exits here
+                self.logger.info("GPU monitor daemon started successfully")
+                exit(0)
+            
+            # Update logger with the new one from daemonizer
+            self.logger = new_logger
+
 def setup_logging() -> logging.Logger:
     """Setup and return a configured logger"""
     logger = logging.getLogger('gpu-monitor')
@@ -452,34 +520,17 @@ def main():
     logger = setup_logging()
     
     try:
-        with Daemonizer() as (is_setup, daemonizer):
-            if is_setup:
-                # This code runs before daemonization
-                load_environment(logger)
-                logger.info("Starting GPU temperature monitor...")
-                
-                if platform.system() == "Windows":
-                    # On Windows, we need to set up a handler for Ctrl+C events at the console level
-                    import win32api
-                    def win32_handler(type):
-                        return True  # Return True to prevent default handler
-                    win32api.SetConsoleCtrlHandler(win32_handler, True)
-                
-            is_parent, logger = daemonizer(
-                PID_FILE,
-                logger
-            )
-            
-            if is_parent:
-                # Parent process exits here
-                logger.info("GPU monitor daemon started successfully")
-                time.sleep(5000)
-                exit(0)
-
-        # We are now daemonized
-        # Reload environment in child process
+        # Create appropriate process manager
+        process_manager = ProcessManager.create(logger)
+        
+        # Handle daemonization
+        process_manager.daemonize()
+        logger = process_manager.logger  # Get potentially updated logger
+        
+        # Load environment in the child process
         load_environment(logger)
         
+        # Common code for all platforms after daemonization
         monitor = GPUMonitor(logger)
         setup_signal_handlers(monitor, logger)
         
