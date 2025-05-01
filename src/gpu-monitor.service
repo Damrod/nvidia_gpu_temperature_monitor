@@ -1,7 +1,9 @@
 [Unit]
 Description=GPU Temperature Monitor
-After=network.target nvidia-persistenced.service
-Requires=nvidia-persistenced.service
+After=network-online.target nvidia-persistenced.service
+Wants=nvidia-persistenced.service network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
